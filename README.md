@@ -17,9 +17,9 @@ conda activate dao
 
 
 
-Rename the `.env.template` file into `.env` and specify the following variables (from DiffCSP).
+Rename the `.env.template` file into `.env` and specify the following variables (from DiffCSP [1]).
 
-```
+```bash
 PROJECT_ROOT: the absolute path of this repo
 HYDRA_JOBS: the absolute path to save hydra outputs
 WABDB_DIR: the absolute path to save wabdb outputs
@@ -31,24 +31,14 @@ WABDB_DIR: the absolute path to save wabdb outputs
 
 ## 2. Data Download
 
-### 2.1 Downstream Task Data
+We provide downstream datasets used for crystal structure prediction and property prediction. These datasets are hosted on Google Drive. You can download them using the link provided below:
 
-The data for downstream tasks is included in the code repository. No additional steps are required for these datasets.
+[Download Downstream Data](https://drive.google.com/drive/folders/1SOOvLycBhsOKKp3qX_l6SkASjfwf7-7A?usp=drive_link)
 
-### 2.2 Pretraining Dataset CrysDB （Optional）
-
-**Note: This step can be skipped, as we have already provided the pretrained model parameters. There is no need to pretrain the model separately.**
-
-
-
-The pretraining dataset is hosted on Google Drive. You can download it using the link provided below:
-
-[Download pretraining Dataset](https://drive.google.com/drive/folders/1_oM_Ow3w_fQHlNOR4yD87C6oGRRUUImt?usp=drive_link)
-
-After downloading, place the dataset in the following directory:
+After downloading, place the the datasets in the following directory:
 
 ```bash
-/path/to/DAO/data/scaling_data/full
+/path/to/DAO/data
 ```
 
 
@@ -58,7 +48,15 @@ After downloading, place the dataset in the following directory:
 
 ## 3. Model Weights
 
-Pretrained model checkpoints for DAO-G and DAO-P are provided in `ckpts` folder for your convenience. Additionally, finetuned DAO-G on `mp_20`, `mpts_52`, and `supercon` are also available for direct generation inference.
+Pretrained model checkpoints for DAO-G and DAO-P are provided for your convenience. Additionally, finetuned DAO-G on `mp_20`, `mpts_52`, and `supercon` are also available for direct CSP inference. These can be downloaded from:
+
+[Download Model Weights](https://drive.google.com/drive/folders/1msp-D3uWD0fJrwE7qrbRXok1u-FoOAdc?usp=drive_link)
+
+Once downloaded, place the weights in the directory specified below:
+
+```bash
+/path/to/DAO/ckpts
+```
 
 
 
@@ -102,7 +100,7 @@ The CSP task involves three main steps: finetuning the pretrained DAO-G, generat
 
 
 
-Before generating structures, the model needs to be finetuned on a dataset specifically designed for crystal structure prediction. This step ensures that the model learns the patterns and relationships in the data required for accurate structure generation.
+Before generating structures, the model needs to be finetuned on a dataset specifically designed for crystal structure prediction. This step ensures that the model learns the distribution of the data required for accurate structure generation.
 
 To finetune the model, run the following command:
 
@@ -126,7 +124,7 @@ To generate structures, run the following command:
 bash structure_generation.sh
 ```
 
-You can customize the `DATA` and `NUM_EVALS` by modifying the arguments in the command. The generated structures will be saved in the same directory as the finetuned model, with the filename `eval_diff_xx_all.pt`.
+You can customize the `DATA` and `NUM_EVALS` by modifying the arguments in the command. The generated structures will be saved in the same directory as the finetuned model, with the filename `eval_diff_${NUM_EVALS}_all.pt`.
 
 
 
@@ -140,7 +138,7 @@ To compute these metrics, run the following command:
 bash structure_evaluation.sh
 ```
 
-You just need to modify the `LABEL` variable to choose different generated structures for evaluation.
+You just need to modify the `LABEL` variable to choose the generated structures you want to evaluate.
 
 
 
@@ -182,7 +180,7 @@ Similarly, this step is also optional, you can use our provied checkpoints in th
 
 ### 7.2 Generating Structures for Superconductors without structures
 
-After finetuning DAO-G on Supercon3D, it possess the ability to generate structures for those no-structure superconductors, by running:
+After finetuning DAO-G on Supercon3D, it gains the ability to generate structures for no-structure superconductors by running:
 
 ```bash
 ## set DATA=supercon_rest  before running
@@ -191,13 +189,19 @@ bash supercon_generation.sh
 
 
 
-Then you can run `data/supercon3d/split_k_fold.py` and `data/supercon3d/aug_k_fold.py` to split the original supercon3D dataset into 5 folds and then augment the training data for each fold.
+Then you can run
+```python
+python data/supercon3d/split_k_fold.py
+python data/supercon3d/aug_k_fold.py
+```
+to split the original supercon3D dataset into five folds and then augment the training set for each fold.
 
 
 
 ### 7.3 Experiments on Three Real-World Superconductors
 
-By using DAO-G and DAO-P models finetuned on the Supercon3D dataset, we can generate structures and predict Critical Temperatures ($T_c$) for three recently discovered superconductors, which are complex to analyze with conventional calculation software, such as DFT.
+By using DAO-G and DAO-P models finetuned on the Supercon3D dataset, we can generate structures and predict Critical Temperatures ($T_c$) for three recently discovered superconductors, which are complex to analyze with conventional DFT software, such as quantum Espresso (QE [2]).
+
 
 #### 7.3.1 Structure Generation via DAO-G
 
@@ -225,4 +229,12 @@ bash pred_tc.sh
 This README provides a comprehensive guide to setting up and using the DAO-G and DAO-P models. Whether you want to pretrain, finetune, or evaluate the models, the steps outlined above should help you get started. If you encounter any issues or have questions, feel free to open an issue in the repository.
 
 Happy coding!
+
+
+
+## References
+
+[1] Jiao, Rui, et al. "Crystal structure prediction by joint equivariant diffusion." Advances in Neural Information Processing Systems 36 (2023): 17464-17497.
+
+[2] Giannozzi, Paolo, et al. "Advanced capabilities for materials modelling with Quantum ESPRESSO." Journal of physics: Condensed matter 29.46 (2017): 465901.
 
