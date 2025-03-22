@@ -1,5 +1,7 @@
 data/*
 !data/
+!data/.gitkeep
 
 ckpts/*
 !ckpts/
+!ckpts/.gitkeep
