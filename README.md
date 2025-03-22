@@ -1,4 +1,4 @@
-# README
+# Siamese Foundation Models for Crystal Structure Prediction
 
 This repository provides the code and resources for running pretraining, finetuning, and evaluation of the DAO-G and DAO-P models. Below is a detailed guide on how to set up the environment, download the data, use the pretrained models, and perform various tasks.
 
