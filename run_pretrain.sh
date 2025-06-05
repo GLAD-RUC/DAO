@@ -30,4 +30,4 @@ CUDA_VISIBLE_DEVICES='0,1' python diffcsp/run.py expname=DAO_P \
     data=pretrain_daop_data data.train_max_epochs=$EPOCHS train.pretrain=True \
     optim.lr_scheduler_cos.T_0=$EPOCHS optim.optimizer.lr=0.0002  optim.warm_epochs=50\
     +load_state_dict_only=True +ckpt_path=$CKPT\
-    model.only_diffusion=True train.pl_trainer.gpus=2
+    model.only_diffusion=False train.pl_trainer.gpus=2
