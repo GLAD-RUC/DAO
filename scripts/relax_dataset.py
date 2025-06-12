@@ -112,7 +112,7 @@ def main(args) -> None:
     # model.scaler = datamodule.scaler.copy()
     
 
-    relaxed_data = []
+    outputs = []
     
     if not args.relax_stable:
         print('donot relax stable data.......')
@@ -133,8 +133,9 @@ def main(args) -> None:
             data_list = [data_list_ori[i] for (i, is_stable) in enumerate(stable_idx) if not is_stable]
             if len(data_list) == 0:
                 print('The data in this batch are all stable.....')
-                props = [item.y[0][0] for item in stable_list]
-                relaxed_data.extend(get_output(props, stable_list, datamodule.scaler, energy_scaler, prop_name))
+                if args.return_stable:
+                    props = [item.y[0][0] for item in stable_list]
+                    outputs.extend(get_output(props, stable_list, datamodule.scaler, energy_scaler, prop_name))
                 continue
             batch = Batch.from_data_list(data_list)
         else:
@@ -149,8 +150,9 @@ def main(args) -> None:
         print(f'************** relax num: {len(relax_data_list)}/{datamodule.batch_size.train}')
         if len(relax_data_list) == 0:
             print('There are no data need to relax in this batch.....')
-            props = [item.y[0][0] for item in data_list]
-            relaxed_data.extend(get_output(props, data_list, datamodule.scaler, energy_scaler, prop_name))
+            if args.return_unrelax:
+                props = [item.y[0][0] for item in data_list]
+                outputs.extend(get_output(props, data_list, datamodule.scaler, energy_scaler, prop_name))
             continue
             
         
@@ -167,11 +169,11 @@ def main(args) -> None:
         
         data_list_out = []
         props_out = []
-        if args.return_stable == 1:
+        if args.return_stable:
             data_list_out += stable_list
-            props_out = [item.y[0][0] for item in stable_list]
+            props_out += [item.y[0][0] for item in stable_list]
         
-        if args.return_unrelax == 0:
+        if not args.return_unrelax:
             data_list = relax_data_list
         else:
             new_relaxed_props = batch.y
@@ -186,11 +188,11 @@ def main(args) -> None:
         data_list_out += data_list
         props_out += [prop for prop in relaxed_props]
         
-        relaxed_data.extend(get_output(props_out, data_list_out, datamodule.scaler, energy_scaler, prop_name))
+        outputs.extend(get_output(props_out, data_list_out, datamodule.scaler, energy_scaler, prop_name))
         
 
-    torch.save(relaxed_data, cfg_dir+f'/relax_data_{label}_{args.step_size}_{args.num_steps}_{args.threshold}.pt')
-    print('----------relaxed_data num: ', len(relaxed_data))
+    torch.save(outputs, cfg_dir+f'/relax_data_{label}_{args.step_size}_{args.num_steps}_{args.threshold}.pt')
+    print('----------outputs num: ', len(outputs))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -208,5 +210,10 @@ if __name__ == '__main__':
     parser.add_argument('--start', default=-1, type=int)
     parser.add_argument('--end', default=-1, type=int)
     args = parser.parse_args()
+
+    ## change to Bool
+    args.return_stable = args.return_stable and 1
+    args.return_unrelax = args.return_unrelax and 1
     main(args)
+
 
