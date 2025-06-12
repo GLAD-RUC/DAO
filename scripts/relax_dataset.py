@@ -164,8 +164,14 @@ def main(args) -> None:
         lengths, angles = lattices_to_params_shape(lattices)
         relax_batch.lengths, relax_batch.angles, relax_batch.frac_coords = lengths, angles, frac_coords
         relax_data_list = relax_batch.to_data_list()
-
-        if args.return_relax_only:
+        
+        data_list_out = []
+        props_out = []
+        if args.return_stable == 1:
+            data_list_out += stable_list
+            props_out = [item.y[0][0] for item in stable_list]
+        
+        if args.return_unrelax == 0:
             data_list = relax_data_list
         else:
             new_relaxed_props = batch.y
@@ -176,11 +182,11 @@ def main(args) -> None:
                     new_relaxed_props[i] = relaxed_props[pos]
                     pos += 1
             relaxed_props = new_relaxed_props
-            
-        data_list_out = stable_list + data_list
-        relaxed_props = [item.y[0][0] for item in stable_list] + [prop for prop in relaxed_props]
+
+        data_list_out += data_list
+        props_out += [prop for prop in relaxed_props]
         
-        relaxed_data.extend(get_output(relaxed_props, data_list_out, datamodule.scaler, energy_scaler, prop_name))
+        relaxed_data.extend(get_output(props_out, data_list_out, datamodule.scaler, energy_scaler, prop_name))
         
 
     torch.save(relaxed_data, cfg_dir+f'/relax_data_{label}_{args.step_size}_{args.num_steps}_{args.threshold}.pt')
@@ -194,7 +200,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_steps', type=int, default=2)
     parser.add_argument('--step_size', type=float, default=0.005)
     parser.add_argument('--add_noise', action='store_true')
-    parser.add_argument('--return_relax_only', action='store_true')
+    parser.add_argument('--return_stable', type=int, default=0)
+    parser.add_argument('--return_unrelax', type=int, default=0)
     parser.add_argument('--relax_stable', action='store_true')
     parser.add_argument('--relax_mode', default='gradient')
     parser.add_argument('--threshold', type=float, default=0.08)
