@@ -217,7 +217,7 @@ if __name__ == '__main__':
     parser.add_argument('--running_dir', default='')
     parser.add_argument('--dataset', required=True)
     parser.add_argument('--step_lr', default=-1, type=float)
-    parser.add_argument('--aug', default=1., type=float)
+    parser.add_argument('--aug', default=20., type=float)
     parser.add_argument('--start', default=-1, type=int)
     parser.add_argument('--end', default=-1, type=int)
     parser.add_argument('--num_evals', default=1, type=int)
