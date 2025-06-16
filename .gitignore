@@ -5,3 +5,8 @@ data/*
 ckpts/*
 !ckpts/
 !ckpts/.gitkeep
+
+.env
+demo.sh
+
+hydra
