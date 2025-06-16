@@ -6,7 +6,10 @@ ckpts/*
 !ckpts/
 !ckpts/.gitkeep
 
+__pycache__/*
+
 .env
 demo.sh
+demo*.*
 
 hydra
