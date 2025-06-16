@@ -6,7 +6,10 @@ ckpts/*
 !ckpts/
 !ckpts/.gitkeep
 
-__pycache__/*
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 .env
 demo.sh
