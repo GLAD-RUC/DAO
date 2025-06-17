@@ -36,7 +36,13 @@ import numpy as np
 
 def diffusion(loader, model, num_evals, energy_model=None, idx_pool=None, step_lr = 1e-5, energy_guidance=False, aug=1.):
 
-    print('*********', aug)
+    print('=' * 20)
+    if energy_guidance:
+        print('Using energy guidance.......')
+        print('augmentation factor: ', aug)
+    else:
+        print('Not using energy guidance.......')
+    print('=' * 20)
     
     frac_coords = []
     num_atoms = []
