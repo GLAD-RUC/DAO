@@ -16,3 +16,6 @@ demo.sh
 demo*.*
 
 hydra
+tools
+prop_baselines
+prop_prediction

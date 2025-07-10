@@ -201,11 +201,7 @@ class CrystPredictiveFinetuneModel(CrystFinetuneModel):
 
 
         self.scaler.match_device(pred_scalar)
-        if self.dataset == 'hw_metal':
-            loss_scalar = F.l1_loss(pred_scalar, tar_scalar, reduction='none') / batch.num_atoms.unsqueeze(-1)
-            loss_scalar = torch.mean(loss_scalar) * self.scaler.stds
-        else:
-            loss_scalar = F.l1_loss(pred_scalar, tar_scalar) * self.scaler.stds
+        loss_scalar = F.l1_loss(pred_scalar, tar_scalar) * self.scaler.stds
 
         return {
                 'loss' : loss_scalar,
