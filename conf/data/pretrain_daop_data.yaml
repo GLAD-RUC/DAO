@@ -11,7 +11,7 @@ graph_method: crystalnn
 lattice_scale_method: scale_length
 preprocess_workers: 30
 readout: mean
-max_atoms: 20
+max_atoms: 30
 otf_graph: false
 eval_model_name: pretrain
 tolerance: 0.1
@@ -31,7 +31,7 @@ datamodule:
       _target_: diffcsp.pl_data.dataset.CrystDataset
       name: strucure train
       path: ${data.root_path}/stable.csv
-      save_path: ${data.root_path}/all.pt
+      save_path: ${data.root_path}/all_nodedup.pt
       prop: ${data.prop}
       niggli: ${data.niggli}
       primitive: ${data.primitive}
