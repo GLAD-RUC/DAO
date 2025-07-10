@@ -98,10 +98,6 @@ def run(cfg: DictConfig) -> None:
     )
 
 
-    if cfg.train.pretrain_mode == 'gen':
-        cfg.model._target_ = 'diffcsp.pl_modules.PTModels.CrystGenerativePretrainModel'
-    else:
-        cfg.model._target_ = 'diffcsp.pl_modules.PTModels.CrystPredictivePretrainModel'
     # Instantiate model
     hydra.utils.log.info(f"Instantiating <{cfg.model._target_}>")
     
