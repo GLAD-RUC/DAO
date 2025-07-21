@@ -143,6 +143,7 @@ class AttentionLayer(nn.Module):
 
     def forward(self, node_features, frac_coords, lattices, edge_index, edge2graph, frac_diff = None):
         edge_num = len(edge_index[0])
+        node_num = node_features.shape[0]
 
         edge_feats = self.get_edge_feats(frac_coords, lattices, edge_index, edge2graph, frac_diff, norm_lattice_ip=False)
         if self.norm_edge:
@@ -159,7 +160,8 @@ class AttentionLayer(nn.Module):
 
         qk = torch.sum(q * k, dim=-1, keepdim=True) / math.sqrt(q.shape[-1])
         logits = scatter_softmax(qk, edge_index[0], dim=0)
-        agg = scatter(logits * v, edge_index[0], dim = 0, reduce='sum')
+        ## dim_size ensures output has correct size even if some nodes have no incoming edges (isolated nodes)
+        agg = scatter(logits * v, edge_index[0], dim = 0, dim_size = node_num, reduce='sum')
 
         agg = self.to_out(agg.flatten(-2))
         return agg
