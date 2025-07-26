@@ -30,8 +30,8 @@ datamodule:
     train:
       _target_: diffcsp.pl_data.dataset.CrystDataset
       name: strucure train
-      path: ${data.root_path}/stable.csv
-      save_path: ${data.root_path}/dedup_final.pt
+      path: ${data.root_path}/all.csv
+      save_path: ${data.root_path}/all.pt
       prop: ${data.prop}
       niggli: ${data.niggli}
       primitive: ${data.primitive}
