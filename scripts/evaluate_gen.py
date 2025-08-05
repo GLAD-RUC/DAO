@@ -106,10 +106,10 @@ class Crystal(object):
             self.struct_valid = structure_validity(self.structure)
         else:
             self.struct_valid = False
-        if not self.comp_valid:
-            print('comp invalid')
-        if not self.struct_valid:
-            print('struct invalid')
+        # if not self.comp_valid:
+        #     print('comp invalid')
+        # if not self.struct_valid:
+        #     print('struct invalid')
         self.valid = self.comp_valid and self.struct_valid
 
     def get_fingerprints(self):
