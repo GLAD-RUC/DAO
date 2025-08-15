@@ -16,6 +16,7 @@ radius: 7.  # maximum search radius for OTF graph building in decoder
 timesteps: 1000
 only_diffusion: False
 only_energy: False
+exp_energy_loss: True
 
 defaults:
   - decoder: crysformer

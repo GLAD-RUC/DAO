@@ -265,11 +265,16 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
             
 
         if not self.hparams.only_diffusion:
-            energy_0 = batch.y
-            temperature = 1.
-            p_label = torch.exp( -energy_0 * temperature)
-            # p_pred = torch.exp(-energy_t * temperature)
-            p_pred = torch.exp(-energy_t)
+            if self.hparams.exp_energy_loss:
+                energy_0 = batch.y
+                temperature = 1.
+                p_label = torch.exp( -energy_0 * temperature)
+                # p_pred = torch.exp(-energy_t * temperature)
+                p_pred = torch.exp(-energy_t)
+            else:
+                p_label = batch.y
+                p_pred = energy_t
+                
             loss_energy = F.mse_loss(p_pred, p_label)
             
 
