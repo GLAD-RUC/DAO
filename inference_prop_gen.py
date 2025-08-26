@@ -7,7 +7,7 @@ sys.path.append('..')
 from diffcsp.pl_data.dataset import MyDataset, SimpleDataset
 from torch_geometric.data import DataLoader
 from diffcsp.pl_modules.PTModels import CrystGenerativePretrainModel
-from diffcsp.pl_modules.FTModels import CrystGenerativeFinetuneModel
+from diffcsp.pl_modules.FTModels import CrystPredictiveFinetuneModel
 from diffcsp.pl_data.datamodule import worker_init_fn
 from tqdm import tqdm
 import argparse
