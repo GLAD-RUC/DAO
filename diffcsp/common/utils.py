@@ -230,6 +230,16 @@ CGCNN_LIST = [
 
 
 
+def convert_tensor_to_value(metrics):
+    for key, value in metrics.items():
+        if hasattr(value, "item"):  
+            metrics[key] = value.item()  
+        elif isinstance(value, dict):  
+            metrics[key] = convert_tensor_to_value(value)
+    return metrics
+
+
+
 
 
 class SinusoidsEmbedding(nn.Module):
