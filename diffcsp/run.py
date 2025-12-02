@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import List
 import sys
@@ -21,8 +22,7 @@ from pytorch_lightning.callbacks import (
     ModelCheckpoint,
 )
 from pytorch_lightning.loggers import WandbLogger
-
-from diffcsp.common.utils import load_state_dict_from_checkpoint, log_hyperparameters, PROJECT_ROOT
+from diffcsp.common.utils import load_state_dict_from_checkpoint, log_hyperparameters, PROJECT_ROOT, convert_tensor_to_value
 import wandb
 
 
@@ -76,7 +76,7 @@ def run(cfg: DictConfig) -> None:
 
     if cfg.train.pl_trainer.fast_dev_run:
         hydra.utils.log.info(
-            f"Debug mode <{cfg.train.pl_trainer.fast_dev_run=}>. "
+            f"Debug mode <{cfg.train.pl_trainer.fast_dev_run}>. "
             f"Forcing debugger friendly configuration!"
         )
         # Debuggers don't like GPUs nor multiprocessing
@@ -153,7 +153,7 @@ def run(cfg: DictConfig) -> None:
     # else:
     #     ckpt = None
 
-
+    
     hydra.utils.log.info("Instantiating the Trainer")
     trainer = pl.Trainer(
         default_root_dir=hydra_dir,
@@ -201,6 +201,15 @@ def run(cfg: DictConfig) -> None:
     if not cfg.train.pretrain:
         hydra.utils.log.info("Starting testing!")
         trainer.test(datamodule=datamodule)
+
+        metrics = convert_tensor_to_value(trainer.callback_metrics)
+    
+        print(metrics)
+        
+        # save the metrics to a json file
+        with open(f"{hydra_dir}/metrics.json", "w") as f:
+            json.dump(metrics, f, indent=4)
+        print("metrics saved to metrics.json")
 
     # Logger closing to release resources/avoid multi-run conflicts
     if wandb_logger is not None:
