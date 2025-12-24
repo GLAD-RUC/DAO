@@ -49,7 +49,8 @@ def run(args):
             pred_prop = model.pred_energy(batch)
         else:
             pred_prop = model.pred_prop(batch)
-            
+        
+        pred_prop = scaler.inverse_transform(pred_prop)
         all_pred_props.extend(pred_prop.cpu().tolist())
 
     all_pred_props = np.array(all_pred_props)
