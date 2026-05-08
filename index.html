@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DAO — Siamese Foundation Models for Crystal Structure Prediction</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg-primary: #f8f9fc;
+  --bg-secondary: #eef1f7;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f5f7fb;
+  --accent: #2563eb;
+  --accent2: #7c3aed;
+  --accent3: #059669;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-dim: #94a3b8;
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.04);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,.08);
+  --gradient-1: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  --gradient-2: linear-gradient(135deg, #7c3aed 0%, #059669 100%);
+  --gradient-hero: linear-gradient(170deg, #eef2ff 0%, #f8f9fc 35%, #f0fdf4 70%, #f8f9fc 100%);
+}
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+a { color: var(--accent); text-decoration: none; transition: color .2s; }
+a:hover { color: #1d4ed8; }
+
+/* ===== Nav ===== */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(248,249,252,.88);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+nav .nav-inner {
+  max-width: 1200px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .7rem 2rem;
+}
+nav .logo {
+  font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em;
+  background: var(--gradient-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+nav .nav-links { display: flex; gap: 1.75rem; list-style: none; }
+nav .nav-links a {
+  color: var(--text-secondary); font-size: .85rem; font-weight: 500;
+  transition: color .2s; padding: .25rem 0;
+  border-bottom: 2px solid transparent;
+}
+nav .nav-links a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ===== Hero ===== */
+.hero {
+  min-height: 92vh;
+  background: var(--gradient-hero);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; padding: 7rem 2rem 4rem;
+}
+.hero::before {
+  content: ''; position: absolute; top: -30%; right: -20%;
+  width: 60%; height: 80%;
+  background: radial-gradient(ellipse, rgba(37,99,235,.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero::after {
+  content: ''; position: absolute; bottom: -20%; left: -15%;
+  width: 50%; height: 70%;
+  background: radial-gradient(ellipse, rgba(5,150,105,.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-content { position: relative; text-align: center; max-width: 880px; }
+.hero-badge {
+  display: inline-block; padding: .3rem 1rem; margin-bottom: 1.5rem;
+  border: 1px solid rgba(37,99,235,.25); border-radius: 999px;
+  font-size: .78rem; color: var(--accent); letter-spacing: .04em;
+  background: rgba(37,99,235,.04);
+}
+.hero h1 {
+  font-size: 3rem; font-weight: 800; line-height: 1.15; margin-bottom: 1.25rem;
+  letter-spacing: -.02em;
+  color: var(--text-primary);
+}
+.hero h1 span {
+  background: var(--gradient-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero .tagline {
+  font-size: 1.15rem; color: var(--text-secondary); margin-bottom: 1.5rem;
+  max-width: 680px; margin-left: auto; margin-right: auto;
+}
+.hero .authors { font-size: .88rem; color: var(--text-secondary); margin-bottom: .5rem; }
+.hero .affiliations {
+  font-size: .75rem; color: var(--text-dim); max-width: 720px;
+  margin: 0 auto 2rem; line-height: 1.65;
+}
+.hero-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .7rem 1.6rem; border-radius: .5rem;
+  font-size: .9rem; font-weight: 600; cursor: pointer;
+  transition: transform .12s, box-shadow .2s;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn-primary {
+  background: var(--gradient-1); color: #fff; border: none;
+  box-shadow: 0 4px 16px rgba(37,99,235,.25);
+}
+.btn-secondary {
+  background: #fff; color: var(--accent); border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.btn-secondary:hover { border-color: var(--accent); }
+
+/* ===== Sections ===== */
+section { padding: 5rem 2rem; }
+.section-inner { max-width: 1100px; margin: 0 auto; }
+section h2 {
+  font-size: 1.85rem; font-weight: 800; margin-bottom: .5rem;
+  letter-spacing: -.01em;
+  color: var(--text-primary);
+}
+section h2 span {
+  background: var(--gradient-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.section-sub {
+  font-size: 1rem; color: var(--text-secondary); margin-bottom: 2.5rem;
+  max-width: 700px;
+}
+.section-alt { background: var(--bg-secondary); }
+
+/* ===== Cards ===== */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; }
+.card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: .75rem; padding: 1.5rem;
+  box-shadow: var(--shadow);
+  transition: box-shadow .2s, transform .12s;
+}
+.card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.card-icon {
+  width: 38px; height: 38px; border-radius: .5rem; margin-bottom: .75rem;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  background: rgba(37,99,235,.08); color: var(--accent);
+}
+.card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .4rem; color: var(--text-primary); }
+.card p { font-size: .88rem; color: var(--text-secondary); }
+
+/* ===== Figure ===== */
+.figure-container {
+  margin: 2rem 0; text-align: center;
+}
+.figure-container img {
+  max-width: 100%; border-radius: .75rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+}
+.figure-caption {
+  font-size: .82rem; color: var(--text-dim); margin-top: .65rem;
+  font-style: italic;
+}
+.figure-container.wide img {
+  max-width: 100%;
+}
+
+/* ===== Pipeline ===== */
+.pipeline { display: flex; flex-direction: column; gap: 0; position: relative; }
+.pipeline::before {
+  content: ''; position: absolute; left: 22px; top: 36px; bottom: 36px;
+  width: 2px; background: linear-gradient(180deg, var(--accent), var(--accent2));
+  opacity: .2;
+}
+.pipeline-step {
+  display: flex; align-items: flex-start; gap: 1.25rem; padding: 1.25rem 0;
+  position: relative;
+}
+.step-num {
+  width: 46px; height: 46px; flex-shrink: 0;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; font-weight: 700; color: #fff;
+  background: var(--gradient-1);
+  box-shadow: 0 2px 10px rgba(37,99,235,.2);
+  z-index: 1;
+}
+.step-content { flex: 1; }
+.step-content h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: .3rem; }
+.step-content p { font-size: .88rem; color: var(--text-secondary); }
+
+/* ===== Tables ===== */
+.table-wrapper {
+  overflow-x: auto; border-radius: .75rem;
+  border: 1px solid var(--border); background: var(--bg-card);
+  box-shadow: var(--shadow);
+}
+table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+thead { background: var(--bg-secondary); }
+th {
+  padding: .65rem .85rem; text-align: left; font-weight: 600;
+  color: var(--accent); border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: .55rem .85rem; border-bottom: 1px solid var(--border-light);
+  color: var(--text-secondary);
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(37,99,235,.02); }
+.best { color: var(--accent3); font-weight: 700; }
+.second-best { color: var(--accent2); font-weight: 600; text-decoration: underline; }
+.table-caption {
+  font-size: .78rem; color: var(--text-dim); margin-top: .65rem;
+  text-align: center; font-style: italic;
+}
+
+/* ===== Highlight Box ===== */
+.highlight-box {
+  background: var(--bg-card); border-left: 4px solid var(--accent);
+  border-radius: .5rem; padding: 1.25rem 1.5rem; margin: 1.5rem 0;
+  box-shadow: var(--shadow);
+}
+.highlight-box.alt { border-left-color: var(--accent2); }
+.highlight-box.green { border-left-color: var(--accent3); }
+.highlight-box h4 { font-size: .95rem; font-weight: 700; margin-bottom: .4rem; color: var(--text-primary); }
+.highlight-box p, .highlight-box ul { font-size: .88rem; color: var(--text-secondary); }
+.highlight-box ul { padding-left: 1.25rem; }
+.highlight-box li { margin-bottom: .3rem; }
+
+/* ===== Stats Row ===== */
+.stats-row { display: flex; flex-wrap: wrap; gap: 1.25rem; margin: 2rem 0; }
+.stat-item {
+  flex: 1; min-width: 170px; text-align: center;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: .75rem; padding: 1.25rem 1rem;
+  box-shadow: var(--shadow);
+}
+.stat-value {
+  font-size: 1.85rem; font-weight: 800; letter-spacing: -.02em;
+  background: var(--gradient-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-label { font-size: .75rem; color: var(--text-dim); margin-top: .2rem; }
+
+/* ===== Qualitative ===== */
+.qual-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; }
+.qual-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: .75rem; padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+.qual-card h4 { font-size: .92rem; font-weight: 700; margin-bottom: .6rem; color: var(--accent); }
+.qual-card p { font-size: .85rem; color: var(--text-secondary); margin-bottom: .4rem; }
+.qual-card .metric { color: var(--accent3); font-weight: 700; }
+
+/* ===== BibTeX ===== */
+.bibtex-box {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: .75rem; padding: 1.5rem 2rem; overflow-x: auto;
+  box-shadow: var(--shadow);
+}
+.bibtex-box pre {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: .78rem; color: var(--text-secondary); line-height: 1.75;
+  white-space: pre;
+}
+
+/* ===== Footer ===== */
+footer {
+  text-align: center; padding: 3rem 2rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-dim); font-size: .78rem;
+  background: var(--bg-secondary);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .hero h1 { font-size: 2rem; }
+  .hero .tagline { font-size: .95rem; }
+  nav .nav-links { gap: .6rem; }
+  nav .nav-links a { font-size: .72rem; }
+  section h2 { font-size: 1.4rem; }
+  .pipeline::before { display: none; }
+  .stats-row { flex-direction: column; }
+}
+
+/* ===== Animations ===== */
+.fade-in {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity .5s ease, transform .5s ease;
+}
+.fade-in.visible { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ========== NAV ========== -->
+<nav>
+  <div class="nav-inner">
+    <div class="logo">Diffusion-based crystAl Omni (DAO)</div>
+    <ul class="nav-links">
+      <li><a href="#motivation">Motivation</a></li>
+      <li><a href="#contributions">Contributions</a></li>
+      <li><a href="#method">Method</a></li>
+      <li><a href="#results">Results</a></li>
+      <li><a href="#superconductor">Superconductor</a></li>
+      <li><a href="#citation">Citation</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ========== HERO ========== -->
+<header class="hero" id="top">
+  <div class="hero-content fade-in">
+    <div class="hero-badge">Preprint &bull; Crystal Structure Prediction &bull; Foundation Models</div>
+    <h1><span>Siamese Foundation Models</span> for Crystal Structure Prediction</h1>
+    <p class="tagline">
+      DAO unites a structure generator (DAO-G) and an energy predictor (DAO-P) in a pretrain–finetune
+      framework, achieving state-of-the-art crystal structure prediction and over 2000&times; speedup
+      versus DFT softwares on real-world superconductors.
+    </p>
+    <p class="authors">
+      Liming Wu<sup>1,2,3†</sup> &nbsp; Wenbing Huang<sup>1,2,3†✉</sup> &nbsp;
+      Rui Jiao<sup>4,5</sup> &nbsp; Jianxing Huang<sup>6</sup> &nbsp;
+      Liwei Liu<sup>6</sup> &nbsp; Yipeng Zhou<sup>6</sup> &nbsp; <br>
+      Hao Sun<sup>1,2,3</sup> &nbsp; Yang Liu<sup>4,5</sup> &nbsp;
+      Fuchun Sun<sup>4</sup> &nbsp; Yuxiang Ren<sup>7✉</sup> &nbsp;
+      Ji-Rong Wen<sup>1,2,3✉</sup>
+    </p>
+    <p class="affiliations">
+      <sup>1</sup>Gaoling School of Artificial Intelligence, Renmin University of China &nbsp;      <br>
+      <sup>2</sup>Beijing Key Laboratory of Research on Large Models and Intelligent Governance &nbsp;      <br>
+      <sup>3</sup>Engineering Research Center of Next-Generation Intelligent Search and Recommendation, MOE &nbsp;      <br>
+      <sup>4</sup>Department of Computer Science and Technology, Tsinghua University &nbsp;      <br>
+      <sup>5</sup>Institute for AI Industry Research, Tsinghua University &nbsp;      <br>
+      <sup>6</sup>Advanced Computing and Storage Lab, Huawei Technologies &nbsp;      <br>
+      <sup>7</sup>School of Intelligence Science and Technology, Nanjing University      <br>
+    </p>
+    <div class="hero-buttons">
+      <a href="https://arxiv.org/pdf/2503.10471" class="btn btn-primary">📄 Paper (arXiv)</a>
+      <a href="https://github.com/ManlioWu/DAO" target="_blank" class="btn btn-secondary">💻 Code</a>
+    </div>
+  </div>
+</header>
+
+<!-- ========== MOTIVATION ========== -->
+<section id="motivation">
+  <div class="section-inner fade-in">
+    <h2>Motivation &amp; <span>Overview</span></h2>
+    <p class="section-sub">
+      Predicting crystal structures from chemical compositions is a fundamental challenge in materials
+      discovery — analogous to protein folding but with far more complex 3D geometries.
+    </p>
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <h3>High Computational Cost</h3>
+        <p>
+          Traditional CSP methods — first-principles calculations, stochastic sampling, and
+          evolutionary optimization — are inherently limited by high computational costs and
+          poor scalability with system complexity.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧩</div>
+        <h3>Limited Generalizability</h3>
+        <p>
+          Existing deep generative models rely on domain-specific small datasets for training,
+          leading to limited generalizability to unseen structures and unsatisfactory performance
+          on widely recognized CSP benchmarks like MPTS-52.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔭</div>
+        <h3>Missing CSP-Specific Foundation Models</h3>
+        <p>
+          Prior crystal foundation models either target force-field prediction (GNoME, MACE-MP-0)
+          or general-purpose generation (MatterGen) — none specifically targets CSP with thorough
+          investigation.
+        </p>
+      </div>
+    </div>
+
+    <div class="highlight-box" style="margin-top:2rem;">
+      <h4>Our Solution: Siamese Foundation Models</h4>
+      <p>
+        We propose <strong>Diffusion-based Crystal Omni (DAO)</strong>, a pretrain–finetune framework
+        comprising two complementary foundation models: <strong>DAO-G</strong> for generating stable
+        crystal structures and <strong>DAO-P</strong> for predicting energy and assisting DAO-G.
+        Both are built upon <strong>Crysformer</strong>, a geometric graph Transformer ensuring O(3)
+        and periodic invariance for crystal structures.
+      </p>
+    </div>
+
+    <!-- Figure 1: Framework Overview -->
+    <div class="figure-container wide">
+      <img src="assets/framework.png" alt="DAO Framework Overview">
+      <p class="figure-caption">The DAO framework: pretraining pipeline and downstream validation of DAO-G and DAO-P.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== KEY CONTRIBUTIONS ========== -->
+<section id="contributions" class="section-alt">
+  <div class="section-inner fade-in">
+    <h2>Key <span>Contributions</span></h2>
+    <p class="section-sub">Six principal advances that collectively push CSP forward.</p>
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon" style="background:rgba(124,58,237,.08);color:var(--accent2);">1</div>
+        <h3>Siamese Foundation Model Framework</h3>
+        <p>
+          First foundation model framework specifically designed for CSP, comprising DAO-G (generator)
+          and DAO-P (predictor) that synergistically cooperate: DAO-P relaxes data and guides
+          generation for DAO-G, while DAO-G augments structural data for DAO-P.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background:rgba(124,58,237,.08);color:var(--accent2);">2</div>
+        <h3>CrysDB: ~940K Crystal Pretraining Dataset</h3>
+        <p>
+          Curated from Materials Project and OQMD, comprising ~940K entries of stable
+          and unstable crystals with energy annotations, enabling large-scale pretraining with
+          rigorous deduplication to prevent data leakage.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background:rgba(124,58,237,.08);color:var(--accent2);">3</div>
+        <h3>Two-Stage Pretraining with Dataset Relaxation</h3>
+        <p>
+          Stage I pretrains DAO-G on all crystals; Stage II refines on a dataset where unstable
+          structures are relaxed by DAO-P using L-BFGS, mitigating bias toward unstable energy
+          landscapes.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background:rgba(124,58,237,.08);color:var(--accent2);">4</div>
+        <h3>Energy-Guided Sampling via Boltzmann Distribution</h3>
+        <p>
+          DAO-P provides energy-based guidance during DAO-G's sampling, steering generated
+          structures toward lower-energy, more thermodynamically stable configurations using
+          a principled exponential energy loss.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background:rgba(124,58,237,.08);color:var(--accent2);">5</div>
+        <h3>SOTA on CSP Benchmarks</h3>
+        <p>
+          Pretraining consistently improves performance across multiple backbone architectures.
+          DAO-G (Crysformer + FlowMM) achieves the best Match Rates of 74.17% on MP-20 and
+          42.01% on MPTS-52.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background:rgba(124,58,237,.08);color:var(--accent2);">6</div>
+        <h3>Real-World Superconductor Validation</h3>
+        <p>
+          On Cr<sub>6</sub>Os<sub>2</sub>, DAO achieves 100% match rate with RMSE 0.0012 and
+          over 2000&times; speedup per iteration vs. DFT. DAO-P predicts critical temperatures
+          with errors as low as 0.04 K.
+        </p>
+      </div>
+    </div>
+
+    <!-- Figure 2: CrysDB Statistics -->
+    <div class="figure-container">
+      <img src="assets/dataset.png" alt="CrysDB Statistics" />
+      <p class="figure-caption">Statistics of CrysDB: source distribution, stable/unstable proportions, and feature distributions.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== METHOD ========== -->
+<section id="method">
+  <div class="section-inner fade-in">
+    <h2>Method / <span>Framework</span></h2>
+    <p class="section-sub">
+      DAO's pretrain–finetune pipeline with two Siamese foundation models and a two-stage
+      pretraining strategy.
+    </p>
+
+    <!-- Pipeline Steps -->
+    <div class="pipeline">
+      <div class="pipeline-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>CrysDB Construction</h3>
+          <p>
+            Compile ~940K crystal entries from Materials Project (94,779 entries) and OQMD
+            (848,105 entries), containing 3–30 atoms with E<sub>hull</sub> &lt; 1.0 eV/atom.
+            After deduplication against downstream benchmarks, the final CrysDB contains
+            919,258 entries — 29% stable, 71% unstable from OQMD; 55% stable, 45% unstable
+            from MP.
+          </p>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Stage I: Pretrain DAO-G on Full CrysDB</h3>
+          <p>
+            DAO-G is pretrained via a diffusion process (DiffCSP) to predict lattice noise
+            ε<sup>L</sup> and fractional coordinates score ε<sup>F</sup>. Training on both
+            stable and unstable crystals enables learning from a broader distribution.
+            Simultaneously, DAO-P is pretrained with a mix-supervised loss: the diffusion CSP
+            loss (self-supervised) plus an exponential energy loss (supervised) that provably
+            converges to ground-truth intermediate energies under Boltzmann-constrained modeling.
+          </p>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Dataset Relaxation via DAO-P</h3>
+          <p>
+            DAO-P predicts energy gradients (force fields) for unstable structures
+            (0.08 &lt; E<sub>hull</sub> &le; 0.5 eV/atom) and relaxes them toward more stable
+            configurations using the L-BFGS optimizer — replacing expensive DFT calculations
+            with a fast ML-based alternative.
+          </p>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h3>Stage II: Refine DAO-G on Relaxed Dataset</h3>
+          <p>
+            Continue pretraining DAO-G on the relaxed dataset with a reduced learning rate,
+            refining the denoising process based on improved data quality and mitigating bias
+            toward unstable regions.
+          </p>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h3>Energy-Guided Sampling</h3>
+          <p>
+            During generation, DAO-P steers the sampling of DAO-G via energy guidance:
+            ∇<sub>M<sub>t</sub></sub> log p<sub>t</sub>(M<sub>t</sub>) =
+            ∇<sub>M<sub>t</sub></sub> log q<sub>t</sub>(M<sub>t</sub>)
+            − β∇<sub>M<sub>t</sub></sub>E<sub>t</sub>(M<sub>t</sub>, t).
+            The Boltzmann-weighted distribution promotes thermodynamically stable structures.
+          </p>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <h3>Finetune for Downstream Tasks</h3>
+          <p>
+            DAO-G is directly finetuned for CSP without architecture modification. DAO-P
+            is finetuned for energy/property prediction with specialized heads across eight
+            distinct datasets.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight-box alt" style="margin-top:1.5rem;">
+      <h4>Crysformer Architecture</h4>
+      <p>
+        Both DAO-G and DAO-P are built on <strong>Crysformer</strong>, a geometric graph Transformer
+        with four modules: (1) an embedding module with CGCNN embeddings and Fourier-Transform-based
+        invariant edge features; (2) an invariant graph attention module with separate parametric
+        networks for keys, values, and edge features; (3) a gated addition module for flexible
+        residual connections; (4) noise and energy prediction heads. Crysformer ensures O(3)
+        equivariance for noise output and O(3) invariance for energy output, along with periodic
+        translation invariance — critical symmetries for crystal structures.
+      </p>
+    </div>
+
+      <!-- Figure 5: Crysformer Architecture -->
+    <div class="figure-container">
+      <img src="assets/crysformer.png" alt="Crysformer Architecture" class="figure-image" />
+      <p class="figure-caption">Crysformer: embedding, invariant graph attention, gated addition, and prediction heads.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ========== EXPERIMENTS & RESULTS ========== -->
+<section id="results" class="section-alt">
+  <div class="section-inner fade-in">
+    <h2>Experiments &amp; <span>Results</span></h2>
+    <p class="section-sub">
+      Evaluation on two well-recognized CSP benchmarks: MP-20 (≤20 atoms, 45,231 crystals)
+      and MPTS-52 (≤52 atoms, 40,476 crystals).
+    </p>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-value">74.17%</div>
+        <div class="stat-label">Best Match Rate on MP-20 (1-shot)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">42.01%</div>
+        <div class="stat-label">Best Match Rate on MPTS-52 (1-shot)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">919K</div>
+        <div class="stat-label">Deduplicated CrysDB Entries</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">2000×</div>
+        <div class="stat-label">Speedup vs. DFT (per iteration)</div>
+      </div>
+    </div>
+
+    <!-- Main Table -->
+    <h3 style="margin-top:1rem;margin-bottom:1rem;font-size:1.1rem;font-weight:700;">CSP Performance (1-shot) on MP-20 &amp; MPTS-52</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Model</th>
+            <th>Size</th>
+            <th>MP-20 MR (%) ↑</th>
+            <th>MP-20 RMSE ↓</th>
+            <th>MPTS-52 MR (%) ↑</th>
+            <th>MPTS-52 RMSE ↓</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td rowspan="5" style="vertical-align:middle;font-weight:600;color:var(--text-dim);">Non-Pretrained</td>
+            <td>CDVAE</td><td>–</td><td>33.90</td><td>0.1045</td><td>5.34</td><td>0.2106</td>
+          </tr>
+          <tr>
+            <td>DiffCSP</td><td>–</td><td>51.49</td><td>0.0631</td><td>12.19</td><td>0.1786</td>
+          </tr>
+          <tr>
+            <td>EquiCSP</td><td>–</td><td>57.39</td><td>0.0510</td><td>14.85</td><td>0.1169</td>
+          </tr>
+          <tr>
+            <td>FlowMM</td><td>–</td><td>61.39</td><td>0.0560</td><td>17.54</td><td>0.1726</td>
+          </tr>
+          <tr>
+            <td>Crysformer + DiffCSP</td><td>–</td><td>51.55</td><td>0.0915</td><td>17.65</td><td>0.1428</td>
+          </tr>
+          <tr style="background:rgba(37,99,235,.03);">
+            <td rowspan="6" style="vertical-align:middle;font-weight:600;color:var(--accent);">Pretrained</td>
+            <td>DiffCSP</td><td>12.3M</td><td>51.23</td><td>0.0552</td><td>18.50</td><td>0.0825</td>
+          </tr>
+          <tr style="background:rgba(37,99,235,.03);">
+            <td>DiffCSP-large</td><td>26.2M</td><td>64.04</td><td>0.0433</td><td>30.77</td><td>0.0640</td>
+          </tr>
+          <tr style="background:rgba(37,99,235,.03);">
+            <td>MatterGen</td><td>25.3M</td><td class="second-best">67.40</td><td class="second-best">0.0332</td><td>30.28</td><td class="second-best">0.0703</td>
+          </tr>
+          <tr style="background:rgba(37,99,235,.03);">
+            <td>FlowMM-large</td><td>25.7M</td><td>69.95</td><td>0.0378</td><td class="second-best">33.78</td><td>0.0951</td>
+          </tr>
+          <tr style="background:rgba(37,99,235,.03);">
+            <td>Crysformer + DiffCSP (DAO-G Stage I)</td><td>25.2M</td><td>65.60</td><td>0.0411</td><td>32.52</td><td>0.0731</td>
+          </tr>
+          <tr style="background:rgba(37,99,235,.05);">
+            <td><strong>Crysformer + FlowMM</strong></td><td>25.2M</td><td class="best">74.17</td><td>0.0400</td><td class="best">42.01</td><td>0.1083</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-caption">
+      Bold green = best, underlined purple = second-best. All pretrained models trained on CrysDB. Results averaged over three runs.
+    </p>
+
+    <!-- Figure 3: Ablation Analysis -->
+    <div class="figure-container wide">
+      <img src="assets/more_analysis.png" alt="Figure 4: Superconductor">
+      <p class="figure-caption">Ablation studies: two-stage pretraining, polymorph generation, energy guidance, and stability rates.</p>
+    </div>
+
+    <!-- Key Findings -->
+    <div class="highlight-box" style="margin-top:1.5rem;">
+      <h4>Key Findings</h4>
+      <ul>
+        <li><strong>Impact of Pretraining:</strong> Large-scale pretraining boosts DAO-G's Match Rate
+        from 51.55% to 65.60% on MP-20. FlowMM also benefits substantially from pretraining.</li>
+        <li><strong>Efficacy of Crysformer:</strong> DAO-G outperforms DiffCSP-large across nearly all
+        metrics. Crysformer + FlowMM also surpasses FlowMM-large in Match Rate.</li>
+        <li><strong>Priority on Large Systems:</strong> While MatterGen slightly outperforms on MP-20,
+        DAO-G achieves higher MR on MPTS-52 (32.52% vs. 30.28%), demonstrating better
+        scaling to larger-atom systems.</li>
+        <li><strong>Flow Matching Advantage:</strong> Replacing diffusion with flow matching yields
+        the best Match Rates of 74.17% on MP-20 and 42.01% on MPTS-52.</li>
+      </ul>
+    </div>
+
+    <!-- Ablation -->
+    <h3 style="margin-top:2.5rem;margin-bottom:1rem;font-size:1.1rem;font-weight:700;">Ablation: Two-Stage Pretraining &amp; Energy Guidance</h3>
+    <div class="cards" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="card-icon" style="background:rgba(5,150,105,.08);color:var(--accent3);">📊</div>
+        <h3>Stage I vs. Stage I+II</h3>
+        <p>
+          Including unstable data in pretraining (Stage I) outperforms stable-only pretraining.
+          Adding Stage II (data relaxation) further improves MR and reduces RMSE on MP-20,
+          and significantly reduces RMSE variance on MPTS-52.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background:rgba(5,150,105,.08);color:var(--accent3);">🔋</div>
+        <h3>Energy Guidance Benefits</h3>
+        <p>
+          Energy-guided sampling increases stability rate from 85.99% → 87.42% on MP-20 and
+          73.75% → 75.05% on MPTS-52. It reduces RMSE on MPTS-52 (0.0695 → 0.0688) and
+          enables an 86.8% energy reduction on K<sub>2</sub>Co<sub>2</sub>H<sub>4</sub>Se<sub>2</sub>O<sub>10</sub>.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background:rgba(5,150,105,.08);color:var(--accent3);">🔮</div>
+        <h3>Polymorph Generation</h3>
+        <p>
+          DAO-G successfully generates all polymorphs in 72.2%, 54.5%, and 81.8% of 2-, 3-,
+          and 4-polymorph cases. For Ni<sub>6</sub>O<sub>2</sub>F<sub>10</sub>
+          (4 conformations), all are hit with RMSEs of 0.0063, 0.0305, 0.0309, 0.0049.
+        </p>
+      </div>
+    </div>
+
+    <!-- DAO-P Energy Accuracy -->
+    <div class="highlight-box green">
+      <h4>DAO-P Energy Prediction Accuracy (Zero-Shot)</h4>
+      <p>
+        Without finetuning on MP-20 or MPTS-52, DAO-P achieves MAEs of
+        <strong>0.0260 eV/atom</strong> on MP-20 and <strong>0.0514 eV/atom</strong> on MPTS-52
+        test sets — accuracy considered acceptable for materials science. DAO-P also achieves
+        SOTA results on four out of eight crystal property prediction datasets.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SUPERCONDUCTOR ========== -->
+<section id="superconductor">
+  <div class="section-inner fade-in">
+    <h2>Real-World <span>Superconductor</span> Analysis</h2>
+    <p class="section-sub">
+      Validating DAO on three real-world superconductors unseen during pretraining and finetuning:
+      Cr<sub>6</sub>Os<sub>2</sub>, Zr<sub>16</sub>Rh<sub>8</sub>O<sub>4</sub>, and
+      Zr<sub>16</sub>Pd<sub>8</sub>O<sub>4</sub>.
+    </p>
+
+    <!-- Figure 4: Superconductor -->
+    <div class="figure-container wide">
+      <img src="assets/supercon_res.png" alt="Superconductor Results">
+      <p class="figure-caption">Superconductor experiments: structure prediction, T<sub>c</sub> estimation, and speed comparison with DFT.</p>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-value">100%</div>
+        <div class="stat-label">Match Rate on Cr<sub>6</sub>Os<sub>2</sub> (20-shot)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">0.0012</div>
+        <div class="stat-label">RMSE on Cr<sub>6</sub>Os<sub>2</sub> (20-shot best)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">0.04 K</div>
+        <div class="stat-label">T<sub>c</sub> Error on Zr<sub>16</sub>Pd<sub>8</sub>O<sub>4</sub></div>
+      </div>
+    </div>
+
+    <div class="qual-grid">
+      <div class="qual-card">
+        <h4>Cr<sub>6</sub>Os<sub>2</sub> (A15 Structure)</h4>
+        <p>
+          DAO-G achieves <span class="metric">100% Match Rate</span> and
+          <span class="metric">RMSE = 0.0012</span> over 20 runs.
+          DFT E<sub>hull</sub> of generated structure: 0.02918 vs. experimental 0.02916 —
+          a difference of only 0.00002 eV/atom.
+        </p>
+        <p>
+          Although unstable Cr<sub>6</sub>Os<sub>2</sub> structures existed in pretraining data,
+          DAO-G generates the stable superconducting structure — not merely memorizing training examples.
+        </p>
+        <p>
+          vs. QE optimizer: 75% MR, avg. RMSE 0.1310, and <span class="metric">&gt;2000×</span> slower per iteration.
+        </p>
+      </div>
+      <div class="qual-card">
+        <h4>Zr<sub>16</sub>Pd<sub>8</sub>O<sub>4</sub> (η-carbide, Fd3̄m)</h4>
+        <p>
+          Features rigid Wyckoff site occupancy and geometrically frustrated stella quadrangula
+          lattices. DAO-G generates the structure with <span class="metric">RMSE = 0.0172</span>.
+          E<sub>hull</sub> difference: 0.0003 eV/atom.
+        </p>
+      </div>
+      <div class="qual-card">
+        <h4>Zr<sub>16</sub>Rh<sub>8</sub>O<sub>4</sub></h4>
+        <p>
+          A minor lattice change (~0.5%) substituting Rh for Pd significantly affects
+          superconducting properties (T<sub>c</sub>: 2.73 K → 3.73 K). DAO-G resolves this
+          with <span class="metric">RMSE = 0.0212</span>.
+        </p>
+        <p>
+          DAO-P T<sub>c</sub> errors: 2.02 K (Cr<sub>6</sub>Os<sub>2</sub>),
+          <span class="metric">0.26 K</span> (Zr<sub>16</sub>Rh<sub>8</sub>O<sub>4</sub>),
+          <span class="metric">0.04 K</span> (Zr<sub>16</sub>Pd<sub>8</sub>O<sub>4</sub>).
+        </p>
+      </div>
+    </div>
+
+    <div class="highlight-box" style="margin-top:2rem;">
+      <h4>Data Augmentation Improves T<sub>c</sub> Prediction</h4>
+      <p>
+        Using DAO-G to generate structures for 748 superconductors without structural data
+        consistently improves DAO-P's T<sub>c</sub> prediction across all 5 cross-validation folds,
+        reducing average MAE (logK) from <strong>0.761 → 0.714</strong>.
+      </p>
+    </div>
+
+    <div class="highlight-box alt">
+      <h4>Speed Advantage</h4>
+      <p>
+        QE optimizer: ~138 minutes over 38 iterations. DAO-G: 1000 sampling iterations in
+        1.5 minutes — over <strong>2000× faster per iteration</strong>.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CONCLUSION ========== -->
+<section id="conclusion" class="section-alt">
+  <div class="section-inner fade-in">
+    <h2>Conclusion &amp; <span>Impact</span></h2>
+    <p class="section-sub">
+      DAO demonstrates the significant potential of Siamese foundation models for advancing
+      materials science research and development.
+    </p>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon">🎯</div>
+        <h3>SOTA Crystal Structure Prediction</h3>
+        <p>
+          DAO-G achieves state-of-the-art results on both MP-20 and MPTS-52 benchmarks,
+          with 74.17% and 42.01% Match Rates. Pretraining consistently benefits multiple
+          backbone architectures.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔄</div>
+        <h3>Synergistic Generator–Predictor Interaction</h3>
+        <p>
+          DAO-P enhances DAO-G via dataset relaxation and energy-guided sampling; DAO-G
+          augments structural data for DAO-P when structural information is unavailable.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧪</div>
+        <h3>Practical Superconductor Analysis</h3>
+        <p>
+          DAO accurately predicts structures and critical temperatures for real-world
+          superconductors, outperforming DFT in both efficiency and accuracy — a promising
+          step toward designing novel high-temperature superconductors.
+        </p>
+      </div>
+    </div>
+
+    <div class="highlight-box green" style="margin-top:2rem;">
+      <h4>Future Directions</h4>
+      <ul>
+        <li><strong>Scaling to larger systems:</strong> Expanding the pretraining dataset beyond
+        30 atoms could improve MPTS-52 performance (currently 42.01% MR in 1-shot, 46.78% in 20-shot).</li>
+        <li><strong>Advanced generative models:</strong> Integrating more advanced generative
+        approaches (e.g., flow matching) into the pretraining process.</li>
+        <li><strong>Novel superconductor design:</strong> Moving beyond structure prediction and
+        T<sub>c</sub> estimation toward property-guided design of novel high-temperature
+        superconductors.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CITATION ========== -->
+<section id="citation">
+  <div class="section-inner fade-in">
+    <h2>BibTeX <span>Citation</span></h2>
+    <p class="section-sub">If you find our work useful, please consider citing:</p>
+    <div class="bibtex-box">
+<pre>@article{wu2025siamese,
+  title={Siamese foundation models for crystal structure prediction},
+  author={Wu, Liming and Huang, Wenbing and Jiao, Rui and Huang, Jianxing and Liu, Liwei and Zhou, Yipeng and Sun, Hao and Liu, Yang and Sun, Fuchun and Ren, Yuxiang and others},
+  journal={arXiv preprint arXiv:2503.10471},
+  year={2025}
+}</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer>
+  <p>
+    DAO: Diffusion-based Crystal Omni &nbsp;|&nbsp;
+    <a href="https://github.com/ManlioWu/DAO" target="_blank">GitHub</a> &nbsp;|&nbsp;
+    <a href="https://doi.org/10.6084/m9.figshare.31440697" target="_blank">Datasets</a>
+  </p>
+  <p style="margin-top:.5rem;">
+    Renmin University of China &bull; Tsinghua University &bull; Huawei Technologies &bull; Nanjing University
+  </p>
+</footer>
+
+<!-- ========== JS: Scroll Animations ========== -->
+<script>
+(function() {
+  const faders = document.querySelectorAll('.fade-in');
+  const observerOpts = { threshold: 0.1 };
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+  }, observerOpts);
+  faders.forEach(f => observer.observe(f));
+})();
+</script>
+</body>
+</html>
