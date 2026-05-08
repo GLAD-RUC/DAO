@@ -324,7 +324,7 @@ footer {
 <!-- ========== HERO ========== -->
 <header class="hero" id="top">
   <div class="hero-content fade-in">
-    <div class="hero-badge">Preprint &bull; Crystal Structure Prediction &bull; Foundation Models</div>
+    <div class="hero-badge">Crystal Structure Prediction &bull; Foundation Models &bull; Superconductors</div>
     <h1><span>Siamese Foundation Models</span> for Crystal Structure Prediction</h1>
     <p class="tagline">
       DAO unites a structure generator (DAO-G) and an energy predictor (DAO-P) in a pretrain–finetune
@@ -349,7 +349,7 @@ footer {
       <sup>7</sup>School of Intelligence Science and Technology, Nanjing University      <br>
     </p>
     <div class="hero-buttons">
-      <a href="https://arxiv.org/pdf/2503.10471" class="btn btn-primary">📄 Paper (arXiv)</a>
+      <a href="https://www.nature.com/articles/s41467-026-72362-3" class="btn btn-primary">📄 Paper</a>
       <a href="https://github.com/ManlioWu/DAO" target="_blank" class="btn btn-secondary">💻 Code</a>
     </div>
   </div>
@@ -512,7 +512,7 @@ footer {
           <h3>Stage I: Pretrain DAO-G on Full CrysDB</h3>
           <p>
             DAO-G is pretrained via a diffusion process (DiffCSP) to predict lattice noise
-            ε<sup>L</sup> and fractional coordinates score ε<sup>F</sup>. Training on both
+            and fractional coordinates score. Training on both
             stable and unstable crystals enables learning from a broader distribution.
             Simultaneously, DAO-P is pretrained with a mix-supervised loss: the diffusion CSP
             loss (self-supervised) plus an exponential energy loss (supervised) that provably
@@ -660,10 +660,10 @@ footer {
             <td>DiffCSP-large</td><td>26.2M</td><td>64.04</td><td>0.0433</td><td>30.77</td><td>0.0640</td>
           </tr>
           <tr style="background:rgba(37,99,235,.03);">
-            <td>MatterGen</td><td>25.3M</td><td class="second-best">67.40</td><td class="second-best">0.0332</td><td>30.28</td><td class="second-best">0.0703</td>
+            <td>MatterGen</td><td>25.3M</td><td>67.40</td><td>0.0332</td><td>30.28</td><td>0.0703</td>
           </tr>
           <tr style="background:rgba(37,99,235,.03);">
-            <td>FlowMM-large</td><td>25.7M</td><td>69.95</td><td>0.0378</td><td class="second-best">33.78</td><td>0.0951</td>
+            <td>FlowMM-large</td><td>25.7M</td><td>69.95</td><td>0.0378</td><td>33.78</td><td>0.0951</td>
           </tr>
           <tr style="background:rgba(37,99,235,.03);">
             <td>Crysformer + DiffCSP (DAO-G Stage I)</td><td>25.2M</td><td>65.60</td><td>0.0411</td><td>32.52</td><td>0.0731</td>
@@ -717,8 +717,7 @@ footer {
         <h3>Energy Guidance Benefits</h3>
         <p>
           Energy-guided sampling increases stability rate from 85.99% → 87.42% on MP-20 and
-          73.75% → 75.05% on MPTS-52. It reduces RMSE on MPTS-52 (0.0695 → 0.0688) and
-          enables an 86.8% energy reduction on K<sub>2</sub>Co<sub>2</sub>H<sub>4</sub>Se<sub>2</sub>O<sub>10</sub>.
+          73.75% → 75.05% on MPTS-52. It reduces RMSE on MPTS-52 (0.0695 → 0.0688).
         </p>
       </div>
       <div class="card">
@@ -849,7 +848,7 @@ footer {
         <div class="card-icon">🎯</div>
         <h3>SOTA Crystal Structure Prediction</h3>
         <p>
-          DAO-G achieves state-of-the-art results on both MP-20 and MPTS-52 benchmarks,
+          Pretrained FlowMM achieves state-of-the-art results on both MP-20 and MPTS-52 benchmarks,
           with 74.17% and 42.01% Match Rates. Pretraining consistently benefits multiple
           backbone architectures.
         </p>
@@ -879,7 +878,7 @@ footer {
         <li><strong>Scaling to larger systems:</strong> Expanding the pretraining dataset beyond
         30 atoms could improve MPTS-52 performance (currently 42.01% MR in 1-shot, 46.78% in 20-shot).</li>
         <li><strong>Advanced generative models:</strong> Integrating more advanced generative
-        approaches (e.g., flow matching) into the pretraining process.</li>
+        approaches into the pretraining process.</li>
         <li><strong>Novel superconductor design:</strong> Moving beyond structure prediction and
         T<sub>c</sub> estimation toward property-guided design of novel high-temperature
         superconductors.</li>
@@ -894,11 +893,13 @@ footer {
     <h2>BibTeX <span>Citation</span></h2>
     <p class="section-sub">If you find our work useful, please consider citing:</p>
     <div class="bibtex-box">
-<pre>@article{wu2025siamese,
-  title={Siamese foundation models for crystal structure prediction},
-  author={Wu, Liming and Huang, Wenbing and Jiao, Rui and Huang, Jianxing and Liu, Liwei and Zhou, Yipeng and Sun, Hao and Liu, Yang and Sun, Fuchun and Ren, Yuxiang and others},
-  journal={arXiv preprint arXiv:2503.10471},
-  year={2025}
+<pre>@article{wu2026dao,
+	title = {Siamese foundation models for crystal structure prediction},
+	issn = {2041-1723},
+	doi = {10.1038/s41467-026-72362-3},
+	journal = {Nature Communications},
+	author = {Wu, Liming and Huang, Wenbing and Jiao, Rui and Huang, Jianxing and Liu, Liwei and Zhou, Yipeng and Sun, Hao and Liu, Yang and Sun, Fuchun and Ren, Yuxiang and Wen, Ji-Rong},
+	year = {2026},
 }</pre>
     </div>
   </div>
