@@ -1,0 +1,24 @@
+_target_: dao.pl_modules.PTModels.CrystGenerativePretrainModel
+pred_scalar: True
+diffuse: True
+mask_nodes: False
+denoise_coord: False 
+denoise_lattice: False
+async_update: False
+time_dim: 256
+latent_dim: 0
+cost_coord: 1.
+cost_lattice: 1.
+cost_atom: 1.
+cost_scalar: 1.
+max_neighbors: 20  # maximum number of neighbors for OTF graph bulding in decoder
+radius: 7.  # maximum search radius for OTF graph building in decoder
+timesteps: 1000
+only_diffusion: False
+only_energy: False
+exp_energy_loss: False
+
+defaults:
+  - decoder: cspnet_ori
+  - beta_scheduler: cosine
+  - sigma_scheduler: wrapped
