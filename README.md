@@ -1,12 +1,18 @@
+<!-- <p align="center"><img src="assets/dao_logo.png" alt="DAO Logo" width="400"></p> -->
+
 # DAO: Siamese Foundation Models for Crystal Structure Prediction
 
-> Figure 1 (PDF): [assets/Figure 1.pdf](assets/Figure%201.pdf)
+<!-- > Figure 1 (PDF): [assets/Figure 1.pdf](assets/Figure%201.pdf) -->
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.8](https://img.shields.io/badge/Python-3.8-blue.svg)](https://www.python.org/downloads/release/python-380/)
-[![PyTorch 1.10](https://img.shields.io/badge/PyTorch-1.10-red.svg)](https://pytorch.org/)
+<p align="center">
+  <a href="https://www.nature.com/articles/s41467-026-72362-3"><img src="https://img.shields.io/badge/Paper-Nature%20Comms-green.svg"></a>
+  <a href="https://arxiv.org/abs/2503.10471"><img src="https://img.shields.io/badge/arXiv-2503.10471-b31b1b.svg"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
+  <a href="https://www.python.org/downloads/release/python-380/"><img src="https://img.shields.io/badge/Python-3.8-blue.svg"></a>
+  <a href="https://pytorch.org/"><img src="https://img.shields.io/badge/PyTorch-1.10-red.svg"></a>
+</p>
 
-**DAO** (**D**iffusion-b**A**sed crystal **O**mni) presents a pair of Siamese foundation models for material science:
+**DAO** (**D**iffusion-based cryst**A**l **O**mni) presents a pair of Siamese foundation models for material science:
 *   **DAO-G**: A generative model for **stable crystal structure prediction (CSP)**, capable of generating diverse polymorphic structures.
 *   **DAO-P**: A predictive model for **energy and property prediction**, which acts as an energy guider for DAO-G to steer generation towards thermodynamic stability.
 
@@ -32,6 +38,7 @@ Both models are built upon **Crysformer**, an equivariant graph transformer, and
     - [Pretraining](#pretraining)
   - [Repository Structure](#repository-structure)
   - [Citation](#citation)
+  - [Contact](#contact)
   - [License](#license)
 
 ## Installation
@@ -296,14 +303,23 @@ bash scripts/run/run_pretrain.sh
 If you find this repository useful, please cite our paper:
 
 ```bibtex
-@article{dao2026,
-  title   = {Siamese Foundation Models for Crystal Structure Prediction},
-  author  = {Liming Wu and Wenbing Huang and Rui Jiao and Jianxing Huang and Liwei Liu and Yipeng Zhou and Hao Sun and Yang Liu and Fuchun Sun and Yuxiang Ren and Ji-Rong Wen},
-  journal = {arXiv preprint},
-  year    = {2026}
+@article{wu2026dao,
+  title = {Siamese foundation models for crystal structure prediction},
+  issn = {2041-1723},
+  doi = {10.1038/s41467-026-72362-3},
+  journal = {Nature Communications},
+  author = {Wu, Liming and Huang, Wenbing and Jiao, Rui and Huang, Jianxing and Liu, Liwei and Zhou, Yipeng and Sun, Hao and Liu, Yang and Sun, Fuchun and Ren, Yuxiang and Wen, Ji-Rong},
+  year = {2026},
 }
 ```
+
+
+## Contact
+
+If you have any questions, feedback, or collaboration ideas, feel free to reach out: 📧 wlm155@126.com
 
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+
