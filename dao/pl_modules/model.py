@@ -28,7 +28,6 @@ def build_mlp(in_dim, hidden_dim, fc_num_layers, out_dim):
 class BaseModule(pl.LightningModule):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__()
-        # populate self.hparams with args and kwargs automagically!
         self.save_hyperparameters()
         if hasattr(self.hparams, "model"):
             self._hparams = self.hparams.model
@@ -132,7 +131,6 @@ class CrystGNN_Supervise(BaseModule):
                 f'{prefix}_volumes_mard': volumes_mard,
             })
         return log_dict, loss
-
 
 
 @hydra.main(config_path=str(PROJECT_ROOT / "conf"), config_name="default")

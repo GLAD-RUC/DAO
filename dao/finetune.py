@@ -16,11 +16,8 @@ from pytorch_lightning.callbacks import (
     ModelCheckpoint,
 )
 from pytorch_lightning.loggers import WandbLogger
-# from dao.pl_modules.PTModels import CrystGenerativePretrainModel
 from dao.common.utils import log_hyperparameters, PROJECT_ROOT
 import wandb
-
-
 
 
 def build_callbacks(cfg: DictConfig) -> List[Callback]:
@@ -94,18 +91,10 @@ def run(cfg: DictConfig) -> None:
         cfg.data.datamodule, pretrain=cfg.train.pretrain, prop=cfg.data.prop, _recursive_=False
     )
 
-    # if not cfg.train.from_scratch:
     if cfg.train.finetune_mode == 'gen':
         cfg.model._target_ = 'dao.pl_modules.FTModels.CrystGenerativeFinetuneModel'
     elif cfg.train.finetune_mode == 'pred':
         cfg.model._target_ = 'dao.pl_modules.FTModels.CrystPredictiveFinetuneModel'
-    # else:
-    #     if cfg.train.finetune_mode == 'gen':
-    #         cfg.model._target_ = 'dao.pl_modules.SCModels.CrystGenerativeScratchModel'
-    #     elif cfg.train.finetune_mode == 'pred':
-    #         cfg.model._target_ = 'dao.pl_modules.SCModels.CrystPredictiveScratchModel'
-    #     elif cfg.train.finetune_mode == 'lora':
-    #         cfg.model._target_ = 'dao.pl_modules.FTModels_Lora.CrystPredictiveFinetuneModel'
 
     # Instantiate model
     hydra.utils.log.info(f"Instantiating <{cfg.model._target_}>")
@@ -132,10 +121,6 @@ def run(cfg: DictConfig) -> None:
     # Instantiate the callbacks
     callbacks: List[Callback] = build_callbacks(cfg=cfg)
 
-    # if not cfg.train.from_scratch:
-    #     model.backbone.scaler = model.scaler
-    #     model.backbone.lattice_scaler = model.lattice_scaler
-
     # Logger instantiation/configuration
     wandb_logger = None
     if "wandb" in cfg.logging:
@@ -157,7 +142,6 @@ def run(cfg: DictConfig) -> None:
     yaml_conf: str = OmegaConf.to_yaml(cfg=cfg)
     (hydra_dir / "hparams.yaml").write_text(yaml_conf)
 
-
     # Load checkpoint (if exist)
     ckpts = list(hydra_dir.glob('*.ckpt'))
     if len(ckpts) > 0:
@@ -170,8 +154,8 @@ def run(cfg: DictConfig) -> None:
             hydra.utils.log.info(f"found checkpoint: {ckpt}")
     else:
         ckpt = None
-    
-    ckpt=None   
+
+    ckpt=None
     hydra.utils.log.info("Instantiating the Trainer")
 
     trainer = pl.Trainer(
@@ -183,7 +167,7 @@ def run(cfg: DictConfig) -> None:
         progress_bar_refresh_rate=cfg.logging.progress_bar_refresh_rate,
         resume_from_checkpoint=ckpt,
         **cfg.train.pl_trainer,
-    ) 
+    )
 
     log_hyperparameters(trainer=trainer, model=model, cfg=cfg)
 

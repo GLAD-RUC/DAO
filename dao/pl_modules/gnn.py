@@ -403,7 +403,6 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
             x = interaction_block(x, rbf, sbf, idx_kj, idx_ji)
             P += output_block(x, rbf, i, num_nodes=pos.size(0))
 
-        # Use mean
         if batch is None:
             if self.readout == 'mean':
                 energy = P.mean(dim=0)
@@ -416,7 +415,6 @@ class DimeNetPlusPlusWrap(DimeNetPlusPlus):
             else:
                 raise NotImplementedError
         else:
-            # TODO: if want to use cat, need two lines here
             energy = scatter(P, batch, dim=0, reduce=self.readout)
 
         return energy

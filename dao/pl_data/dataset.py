@@ -23,7 +23,7 @@ class CrystDataset(Dataset):
     def __init__(self, name: ValueNode='', path: ValueNode='',
                  prop: ValueNode='', niggli: ValueNode=True, primitive: ValueNode=False,
                  graph_method: ValueNode='crystalnn', preprocess_workers: ValueNode=30,
-                 lattice_scale_method: ValueNode='scale_length', save_path: ValueNode='', tolerance: ValueNode=0.1, use_space_group: ValueNode=False, use_pos_index: ValueNode=False, 
+                 lattice_scale_method: ValueNode='scale_length', save_path: ValueNode='', tolerance: ValueNode=0.1, use_space_group: ValueNode=False, use_pos_index: ValueNode=False,
                  stable_threshold=0.08, transform_prop=True,
                  **kwargs):
         super().__init__()
@@ -40,7 +40,6 @@ class CrystDataset(Dataset):
         self.use_pos_index = use_pos_index
         self.tolerance = tolerance
         self.transform_prop = transform_prop
-
 
         self.preprocess(save_path, preprocess_workers, prop)
 
@@ -72,33 +71,18 @@ class CrystDataset(Dataset):
     def __getitem__(self, index):
         data_dict = self.cached_data[index]
 
-        # scaler is set in DataModule set stage
         is_stable = data_dict[self.prop] < self.stable_threshold
         if self.transform_prop:
             prop = self.scaler.transform(data_dict[self.prop])
         else:
             prop = torch.tensor(data_dict[self.prop], dtype=torch.float)
-        
-        ### (n_atoms, 3), (n_atoms, ), (3, ), (3, ), (n_edge, 2), (n_edge, 3), n_atoms
+
         (frac_coords, atom_types, lengths, angles, edge_indices,
          to_jimages, num_atoms) = data_dict['graph_arrays']
-        
-        
-        # print('=====================')
-        # print(num_atoms)
-        # print(edge_indices)
-        
-    
-
-        # atom_coords are fractional coordinates
-        # edge_index is incremented during batching
-        # https://pytorch-geometric.readthedocs.io/en/latest/notes/batching.html
-        
 
         select_idx = np.random.choice(num_atoms, int(num_atoms*0.2))
         mask = np.ones_like(atom_types).astype('bool')
         mask[select_idx] = False
-        
 
         data = Data(
             frac_coords=torch.Tensor(frac_coords),
@@ -106,11 +90,11 @@ class CrystDataset(Dataset):
             lengths=torch.Tensor(lengths).view(1, -1),
             angles=torch.Tensor(angles).view(1, -1),
             edge_index=torch.LongTensor(
-                edge_indices.T).contiguous(),  # shape (2, num_edges)
+                edge_indices.T).contiguous(),
             to_jimages=torch.LongTensor(to_jimages),
             num_atoms=num_atoms,
             num_bonds=edge_indices.shape[0],
-            num_nodes=num_atoms,  # special attribute used for batching in pytorch geometric
+            num_nodes=num_atoms,
             y=prop.view(1, -1),
             mask=torch.from_numpy(mask),
             is_stable = is_stable,
@@ -161,32 +145,24 @@ class TensorCrystDataset(Dataset):
         data_dict = self.cached_data[index]
 
         (frac_coords, atom_types, lengths, angles, edge_indices,
-         to_jimages, num_atoms) = data_dict['graph_arrays']    
-        
+         to_jimages, num_atoms) = data_dict['graph_arrays']
 
-
-        # atom_coords are fractional coordinates
-        # edge_index is incremented during batching
-        # https://pytorch-geometric.readthedocs.io/en/latest/notes/batching.html
         data = Data(
             frac_coords=torch.Tensor(frac_coords),
             atom_types=torch.LongTensor(atom_types),
             lengths=torch.Tensor(lengths).view(1, -1),
             angles=torch.Tensor(angles).view(1, -1),
             edge_index=torch.LongTensor(
-                edge_indices.T).contiguous(),  # shape (2, num_edges)
+                edge_indices.T).contiguous(),
             to_jimages=torch.LongTensor(to_jimages),
             num_atoms=num_atoms,
             num_bonds=edge_indices.shape[0],
-            num_nodes=num_atoms,  # special attribute used for batching in pytorch geometric
+            num_nodes=num_atoms,
         )
         return data
 
     def __repr__(self) -> str:
         return f"TensorCrystDataset(len: {len(self.cached_data)})"
-    
-
-
 
 
 class MyDataset(Dataset):
@@ -202,11 +178,10 @@ class MyDataset(Dataset):
         self.transform_prop = transform_prop
         self.sample_size = sample_size
         self.cached_data = self.proprocess(path)
-        
+
         self.lattice_scaler = None
         self.scaler = None
-    
-    
+
     def proprocess(self, path):
         try:
             res = torch.load(path, map_location='cpu', weights_only=False)
@@ -219,20 +194,19 @@ class MyDataset(Dataset):
             angles = res['angles'][idx]
             atom_types = res['atom_types'][idx]
             num_atoms = res['num_atoms'][idx]
-            
+
             print(len(num_atoms), len(self.ori_data))
             assert len(num_atoms) == len(self.ori_data)
-            
-            
+
             start_idx = 0
             crystal_list = []
             for (batch_idx, num_atom) in tqdm(enumerate(num_atoms.tolist())):
                 cur_frac_coords = frac_coords.narrow(0, start_idx, num_atom).numpy()
                 cur_atom_types = atom_types.narrow(0, start_idx, num_atom).numpy()
-                
+
                 cur_lengths = lengths[batch_idx]
                 cur_angles = angles[batch_idx]
-                
+
                 crystal_list.append({
                     'frac_coords': cur_frac_coords,
                     'lengths': cur_lengths,
@@ -241,12 +215,10 @@ class MyDataset(Dataset):
                     'edge_index': self.ori_data[batch_idx]['graph_arrays'][-3],
                     self.prop: self.ori_data[batch_idx][self.prop]
                 })
-                
+
                 start_idx = start_idx + num_atom
             output_list.extend(crystal_list)
         return output_list
-        
-
 
     def __len__(self) -> int:
         return len(self.cached_data)
@@ -254,31 +226,18 @@ class MyDataset(Dataset):
     def __getitem__(self, index):
         data_dict = self.cached_data[index]
 
-        # scaler is set in DataModule set stage
         is_stable = data_dict[self.prop] < self.stable_threshold
         if self.transform_prop:
             prop = self.scaler.transform(data_dict[self.prop])
         else:
             prop = torch.tensor(data_dict[self.prop], dtype=torch.float)
-        
-        ### (n_atoms, 3), (n_atoms, ), (3, ), (3, ), (n_edge, 2), (n_edge, 3), n_atoms
-        # (frac_coords, atom_types, lengths, angles, edge_indices,
-        #  to_jimages, num_atoms) = data_dict['graph_arrays']
+
         frac_coords = data_dict['frac_coords']
         atom_types = data_dict['atom_types']
         lengths = data_dict['lengths']
         angles = data_dict['angles']
         edge_indices = data_dict['edge_index']
         num_atoms = len(atom_types)
-        
-        # atom_coords are fractional coordinates
-        # edge_index is incremented during batching
-        # https://pytorch-geometric.readthedocs.io/en/latest/notes/batching.html
-        
-        # select_idx = np.random.choice(num_atoms, int(num_atoms*0.2))
-        # mask = np.ones_like(atom_types).astype('bool')
-        # mask[select_idx] = False
-        
 
         data = Data(
             frac_coords=torch.Tensor(frac_coords),
@@ -286,23 +245,18 @@ class MyDataset(Dataset):
             lengths=torch.Tensor(lengths).view(1, -1),
             angles=torch.Tensor(angles).view(1, -1),
             edge_index=torch.LongTensor(
-                edge_indices.T).contiguous(),  # shape (2, num_edges)
+                edge_indices.T).contiguous(),
             num_bonds=edge_indices.shape[0],
             num_atoms=num_atoms,
-            num_nodes=num_atoms,  # special attribute used for batching in pytorch geometric
+            num_nodes=num_atoms,
             y=prop.view(1, -1),
-            # mask=torch.from_numpy(mask),
             is_stable = is_stable,
         )
 
-     
         return data
 
     def __repr__(self) -> str:
         return f"MyDataset......"
-    
-
-
 
 
 class SimpleDataset(Dataset):
@@ -314,10 +268,9 @@ class SimpleDataset(Dataset):
             self.cached_data = torch.load(ori_path, map_location='cpu')
         self.prop = prop
         self.transform_prop = transform_prop
-        
-        self.lattice_scaler = None
-        self.scaler = None        
 
+        self.lattice_scaler = None
+        self.scaler = None
 
     def __len__(self) -> int:
         return len(self.cached_data)
@@ -329,19 +282,9 @@ class SimpleDataset(Dataset):
             prop = self.scaler.transform(data_dict[self.prop])
         else:
             prop = torch.tensor(data_dict[self.prop], dtype=torch.float)
-        
-        ### (n_atoms, 3), (n_atoms, ), (3, ), (3, ), (n_edge, 2), (n_edge, 3), n_atoms
+
         (frac_coords, atom_types, lengths, angles, edge_indices,
          to_jimages, num_atoms) = data_dict['graph_arrays']
-        
-        # atom_coords are fractional coordinates
-        # edge_index is incremented during batching
-        # https://pytorch-geometric.readthedocs.io/en/latest/notes/batching.html
-        
-        # select_idx = np.random.choice(num_atoms, int(num_atoms*0.2))
-        # mask = np.ones_like(atom_types).astype('bool')
-        # mask[select_idx] = False
-        
 
         data = Data(
             frac_coords=torch.Tensor(frac_coords),
@@ -349,21 +292,17 @@ class SimpleDataset(Dataset):
             lengths=torch.Tensor(lengths).view(1, -1),
             angles=torch.Tensor(angles).view(1, -1),
             edge_index=torch.LongTensor(
-                edge_indices.T).contiguous(),  # shape (2, num_edges)
+                edge_indices.T).contiguous(),
             num_bonds=edge_indices.shape[0],
             num_atoms=num_atoms,
-            num_nodes=num_atoms,  # special attribute used for batching in pytorch geometric
+            num_nodes=num_atoms,
             y=prop.view(1, -1),
-            # mask=torch.from_numpy(mask),
         )
 
-     
         return data
 
     def __repr__(self) -> str:
         return f"SimpleDataset......"
-
-
 
 
 @hydra.main(config_path=str(PROJECT_ROOT / "conf"), config_name="default")
@@ -379,8 +318,7 @@ def main(cfg: omegaconf.DictConfig):
     scaler = get_scaler_from_data_list(
         dataset.cached_data,
         key=dataset.prop)
-    
-    
+
     dataset.lattice_scaler = lattice_scaler
     dataset.scaler = scaler
     data_list = [dataset[i] for i in range(len(dataset))]

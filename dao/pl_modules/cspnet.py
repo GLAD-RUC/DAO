@@ -45,7 +45,7 @@ class CSPLayer(nn.Module):
         self.ln = ln
         if self.ln:
             self.layer_norm = nn.LayerNorm(hidden_dim)
-    
+
     def edge_model(self, node_features, frac_coords, lattices, edge_index, edge2graph, frac_diff = None):
 
         hi, hj = node_features[edge_index[0]], node_features[edge_index[1]]
@@ -109,8 +109,6 @@ class CSPNet(nn.Module):
         if self.smooth:
             self.node_embedding = nn.Linear(max_atoms, hidden_dim)
         else:
-            ######## here + 1, for mask nodes
-            # self.node_embedding = nn.Embedding(max_atoms+1, hidden_dim)
             self.node_embedding = nn.Embedding(max_atoms, hidden_dim)
         self.atom_latent_emb = nn.Linear(hidden_dim + latent_dim, hidden_dim)
         if act_fn == 'silu':
@@ -245,7 +243,6 @@ class CSPNet(nn.Module):
             edge_index_new, _, _, edge_vector_new = self.reorder_symmetric_edges(edge_index, to_jimages, num_bonds, distance_vectors)
 
             return edge_index_new, -edge_vector_new
-    
 
     def forward(self, t, atom_types, frac_coords, lattices, num_atoms, node2graph, only_rep=False):
         edges, frac_diff = self.gen_edges(num_atoms, frac_coords, lattices, node2graph)
@@ -253,9 +250,7 @@ class CSPNet(nn.Module):
         if self.smooth:
             node_features = self.node_embedding(atom_types)
         else:
-            ###### here, atom_types - 1  -> atom_types
             node_features = self.node_embedding(atom_types)
-            # node_features = self.node_embedding(atom_types - 1)
 
         if t is not None:
             t_per_atom = t.repeat_interleave(num_atoms, dim=0)
@@ -278,13 +273,11 @@ class CSPNet(nn.Module):
         lattice_out = lattice_out.view(-1, 3, 3)
         if self.ip:
             lattice_out = torch.einsum('bij,bjk->bik', lattice_out, lattices)
-    
+
         type_out = self.type_out(node_features) 
         scalar_out = self.scalar_out(graph_features)
 
         return lattice_out, coord_out, node_features, graph_features, type_out, scalar_out
-    
-
 
     def get_rep(self, t, atom_types, frac_coords, lattices, num_atoms, node2graph):
 

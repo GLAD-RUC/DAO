@@ -14,7 +14,6 @@ from dao.common.utils import SinusoidsEmbedding, LayerNorm
 
 MAX_ATOMIC_NUM=100
 EPS=1e-5
-# helpers
 
 def exists(val):
     return val is not None
@@ -24,7 +23,6 @@ def default(val, d):
 
 List = nn.ModuleList
 
-# normalizations
 
 class PreNorm(nn.Module):
     def __init__(
@@ -61,19 +59,19 @@ class ResidueNorm(nn.Module):
             normed_x = self.norm(x)
             x_ = self.fn(normed_x, *args,**kwargs)
             return self.residue(x, x_)
-        
+
         elif self.norm_mode == 'post':
             x_ = self.fn(x, *args,**kwargs)
             out = self.residue(x, x_)
             return self.norm(out)
-        
+
         return x + self.fn(x, *args,**kwargs)
 
 
-# gated residual
 class Residual(nn.Module):
     def forward(self, x, res):
         return x + res
+
 
 class GatedResidual(nn.Module):
     def __init__(self, dim):
@@ -88,7 +86,6 @@ class GatedResidual(nn.Module):
         gate = self.proj(gate_input)
         return x * gate + res * (1 - gate)
 
-# attention
 
 class AttentionLayer(nn.Module):
     """ Message passing layer for cspnet."""
@@ -121,9 +118,6 @@ class AttentionLayer(nn.Module):
 
         self.edge_norm = nn.LayerNorm(self.edge_dim)
 
-        # self.edge_norm = nn.LayerNorm(self.edge_dim) if self.norm_edge else nn.Identity()
-
-    
     def get_edge_feats(self, frac_coords, lattices, edge_index, edge2graph, frac_diff = None, norm_lattice_ip=False):
         if frac_diff is None:
             xi, xj = frac_coords[edge_index[0]], frac_coords[edge_index[1]]
@@ -160,7 +154,6 @@ class AttentionLayer(nn.Module):
 
         qk = torch.sum(q * k, dim=-1, keepdim=True) / math.sqrt(q.shape[-1])
         logits = scatter_softmax(qk, edge_index[0], dim=0)
-        ## dim_size ensures output has correct size even if some nodes have no incoming edges (isolated nodes)
         agg = scatter(logits * v, edge_index[0], dim = 0, dim_size = node_num, reduce='sum')
 
         agg = self.to_out(agg.flatten(-2))
@@ -191,7 +184,6 @@ class TransformerBlock(nn.Module):
         ip=True,
         norm_edge=True,
     ):
-        
         super(TransformerBlock, self).__init__()
         self.act_fn = act_fn
         self.dis_dim = 3
@@ -201,28 +193,12 @@ class TransformerBlock(nn.Module):
             self.dis_dim = dis_emb.dim
 
         assert hidden_dim % head_num == 0
-        # self.attenion = PreNorm(hidden_dim, AttentionLayer(hidden_dim=hidden_dim, dis_emb=self.dis_emb, \
-        #                                head_num=head_num, ip=ip))
-        # self.ffn = PreNorm(hidden_dim, FeedForwardLayer(dim=hidden_dim))
         self.attention = ResidueNorm(hidden_dim, AttentionLayer(hidden_dim=hidden_dim, dis_emb=self.dis_emb, \
                                        head_num=head_num, ip=ip, norm_edge=norm_edge))
         self.ffn = ResidueNorm(hidden_dim, FeedForwardLayer(dim=hidden_dim))
 
-        # self.attn_residue = GatedResidual(dim=hidden_dim)
-        # self.ffn_residue = GatedResidual(dim=hidden_dim)
-        # self.attn_residue = Residual()
-        # self.ffn_residue = Residual()
-
-
     def forward(self, node_features, frac_coords, lattices, edge_index, edge2graph, frac_diff = None):
-        # attn_out = self.attenion(node_features, frac_coords, lattices, edge_index, edge2graph, frac_diff)
-        # attn_out = self.attn_residue(attn_out, node_features)
-
-        # ffn_out = self.ffn(attn_out)
-        # node_out = self.ffn_residue(ffn_out, attn_out)
-
         attn_out = self.attention(node_features, frac_coords, lattices, edge_index, edge2graph, frac_diff)
-
         node_out = self.ffn(attn_out)
 
         return node_out
@@ -256,15 +232,13 @@ class CrysFormer(nn.Module):
         if self.smooth:
             self.node_embedding = nn.Linear(max_atoms, hidden_dim)
         else:
-            ######## here + 1, for mask nodes
-            # self.node_embedding = nn.Embedding(max_atoms+1, hidden_dim)
             self.node_embedding = nn.Embedding(max_atoms, hidden_dim)
-        
+
         self.embedding_in = nn.Sequential(
             nn.Embedding(101, 92),
             nn.Linear(92, hidden_dim),
         )
-        self.embedding_in[0].weight.data.copy_(torch.tensor(CGCNN_LIST))  # CGCNN Embedding
+        self.embedding_in[0].weight.data.copy_(torch.tensor(CGCNN_LIST))
 
         for param in self.embedding_in[0].parameters():
             param.requires_grad = False
@@ -287,26 +261,22 @@ class CrysFormer(nn.Module):
         self.max_neighbors = max_neighbors
         self.ln = ln
         self.diffuse = diffuse
-        
+
         self.edge_style = edge_style
         if self.ln:
             self.final_layer_norm = nn.LayerNorm(hidden_dim)
-        
-        # self.type_out = nn.Linear(hidden_dim, MAX_ATOMIC_NUM)
-        # self.scalar_out = nn.Linear(hidden_dim, 1)
 
         self.type_out = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.SiLU(),
             nn.Linear(hidden_dim, MAX_ATOMIC_NUM)
         )
- 
+
         self.scalar_out = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.SiLU(),
             nn.Linear(hidden_dim, 1),
         )
-       
 
     def select_symmetric_edges(self, tensor, mask, reorder_idx, inverse_neg):
         # Mask out counter-edges
@@ -418,15 +388,11 @@ class CrysFormer(nn.Module):
             edge_index_new, _, _, edge_vector_new = self.reorder_symmetric_edges(edge_index, to_jimages, num_bonds, distance_vectors)
 
             return edge_index_new, -edge_vector_new
-    
 
     def forward(self, t, atom_types, frac_coords, lattices, num_atoms, node2graph, only_rep=False):
-        # print(self.embedding_in[0].weight)
-
         edges, frac_diff = self.gen_edges(num_atoms, frac_coords, lattices, node2graph)
         edge2graph = node2graph[edges[0]]
-        
-        # node_features = self.node_embedding(atom_types)
+
         node_features = self.embedding_in(atom_types)
 
         if t is not None:
@@ -440,14 +406,11 @@ class CrysFormer(nn.Module):
 
         if self.ln:
             node_features = self.final_layer_norm(node_features)
-        
+
         coords = self.coord_out(node_features)
 
         graph_features = scatter(node_features, node2graph, dim = 0, reduce = 'mean')
 
-        # print(graph_features.shape)
-        # assert False
-        
         if only_rep:
             return node_features, graph_features
 
@@ -455,7 +418,7 @@ class CrysFormer(nn.Module):
         lattice_out = lattice_out.view(-1, 3, 3)
         if self.ip:
             lattice_out = torch.einsum('bij,bjk->bik', lattice_out, lattices)
-    
+
         type_out = self.type_out(node_features) 
         scalar_out = self.scalar_out(graph_features)
 

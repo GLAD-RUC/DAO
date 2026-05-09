@@ -4,6 +4,7 @@ import torch.nn as nn
 import numpy as np
 import math
 
+
 def cosine_beta_schedule(timesteps, s=0.008):
     """
     cosine schedule as proposed in https://arxiv.org/abs/2102.09672
@@ -15,11 +16,14 @@ def cosine_beta_schedule(timesteps, s=0.008):
     betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
     return torch.clip(betas, 0.0001, 0.9999)
 
+
 def linear_beta_schedule(timesteps, beta_start, beta_end):
     return torch.linspace(beta_start, beta_end, timesteps)
 
+
 def quadratic_beta_schedule(timesteps, beta_start, beta_end):
     return torch.linspace(beta_start**0.5, beta_end**0.5, timesteps) ** 2
+
 
 def sigmoid_beta_schedule(timesteps, beta_start, beta_end):
     betas = torch.linspace(-6, 6, timesteps)
@@ -32,11 +36,13 @@ def p_wrapped_normal(x, sigma, N=10, T=1.0):
         p_ += torch.exp(-(x + T * i) ** 2 / 2 / sigma ** 2)
     return p_
 
+
 def d_log_p_wrapped_normal(x, sigma, N=10, T=1.0):
     p_ = 0
     for i in range(-N, N + 1):
         p_ += (x + T * i) / sigma ** 2 * torch.exp(-(x + T * i) ** 2 / 2 / sigma ** 2)
     return p_ / p_wrapped_normal(x, sigma, N, T)
+
 
 def sigma_norm(sigma, T=1.0, sn = 10000):
     sigmas = sigma[None, :].repeat(sn, 1)
@@ -47,7 +53,6 @@ def sigma_norm(sigma, T=1.0, sn = 10000):
 
 
 class BetaScheduler(nn.Module):
-
     def __init__(
         self,
         timesteps,
@@ -66,15 +71,12 @@ class BetaScheduler(nn.Module):
         elif scheduler_mode == 'sigmoid':
             betas = sigmoid_beta_schedule(timesteps, beta_start, beta_end)
 
-
         betas = torch.cat([torch.zeros([1]), betas], dim=0)
         alphas = 1. - betas
         alphas_cumprod = torch.cumprod(alphas, axis=0)
 
         sigmas = torch.zeros_like(betas)
-
         sigmas[1:] = betas[1:] * (1. - alphas_cumprod[:-1]) / (1. - alphas_cumprod[1:])
-
         sigmas = torch.sqrt(sigmas)
 
         self.register_buffer('betas', betas)
@@ -86,8 +88,8 @@ class BetaScheduler(nn.Module):
         ts = np.random.choice(np.arange(1, self.timesteps+1), batch_size)
         return torch.from_numpy(ts).to(device)
 
-class SigmaScheduler(nn.Module):
 
+class SigmaScheduler(nn.Module):
     def __init__(
         self,
         timesteps,
@@ -108,5 +110,3 @@ class SigmaScheduler(nn.Module):
     def uniform_sample_t(self, batch_size, device):
         ts = np.random.choice(np.arange(1, self.timesteps+1), batch_size)
         return torch.from_numpy(ts).to(device)
-
-

@@ -12,23 +12,21 @@ from tqdm import tqdm
 import copy
 from dao.common.utils import PROJECT_ROOT, RequiresGradContext
 from dao.common.data_utils import lattice_params_to_matrix_torch
-from dao.pl_modules.crysformer import CrysFormer 
+from dao.pl_modules.crysformer import CrysFormer
 from dao.pl_modules.cspnet import CSPNet
 from dao.pl_modules.diff_utils import d_log_p_wrapped_normal
-# from warmup_scheduler import GradualWarmupScheduler
 from torch.autograd import grad
 from torch.optim.lr_scheduler import LinearLR, SequentialLR
 
 
-MAX_ATOMIC_NUM=100
+MAX_ATOMIC_NUM = 100
 
 
-################ case: mask all False, return 0.
 def mask_mse(pred, target, mask):
     assert mask.shape[0] == pred.shape[0] and mask.shape[0] == target.shape[0]
     assert pred.shape == target.shape
     loss = F.mse_loss(pred, target, reduction='none').mean(tuple(range(1, len(pred.shape))))
-    mask_loss = torch.masked_select(loss, mask).mean() 
+    mask_loss = torch.masked_select(loss, mask).mean()
     return mask_loss
 
 
@@ -39,13 +37,12 @@ class BaseModule(pl.LightningModule):
         self.save_hyperparameters()
         if hasattr(self.hparams, "model"):
             self._hparams = self.hparams.model
-    
 
     def configure_optimizers(self):
         opt = hydra.utils.instantiate(
             self.hparams.optim.optimizer, params=self.parameters(), _convert_="partial"
         )
-        
+
         if not self.hparams.optim.use_lr_scheduler:
             return [opt]
 
@@ -59,19 +56,15 @@ class BaseModule(pl.LightningModule):
             )
 
         if self.hparams.optim.warm_up:
-            # scheduler = GradualWarmupScheduler(opt, multiplier=1, total_epoch=20, after_scheduler=scheduler)
             scheduler_warm = LinearLR(opt, start_factor=0.001, end_factor=1., total_iters=self.hparams.optim.warm_epochs)
             scheduler = SequentialLR(optimizer=opt, schedulers=[scheduler_warm, scheduler], milestones=[scheduler_warm.total_iters])
             scheduler.optimizer=opt
         return {
-            "optimizer": opt, 
+            "optimizer": opt,
             "lr_scheduler": scheduler,
             "monitor": "val_loss",
         }
-    
-        
 
-### Model definition
 
 class SinusoidalTimeEmbeddings(nn.Module):
     """ Attention is all you need. """
@@ -87,24 +80,22 @@ class SinusoidalTimeEmbeddings(nn.Module):
         embeddings = time[:, None] * embeddings[None, :]
         embeddings = torch.cat((embeddings.sin(), embeddings.cos()), dim=-1)
         return embeddings
-    
 
 
 class CrystPretrainModel(BaseModule):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.diffuse = self.hparams.diffuse 
+        self.diffuse = self.hparams.diffuse
         self.max_atoms = 100
         latent_dim = self.hparams.latent_dim + self.hparams.time_dim if self.diffuse else self.hparams.latent_dim
 
         self.decoder = hydra.utils.instantiate(self.hparams.decoder, latent_dim = latent_dim, diffuse=self.diffuse, \
                                                  _recursive_=False, max_atoms=self.max_atoms)
-        
+
         self.keep_lattice = self.hparams.cost_lattice < 1e-5
         self.keep_coords = self.hparams.cost_coord < 1e-5
 
     def training_step(self, batch: Any, batch_idx: int) -> torch.Tensor:
-        ###### here
         output_dict = self(batch, stable_check=False)
 
         loss_lattice = output_dict['loss_lattice']
@@ -125,11 +116,8 @@ class CrystPretrainModel(BaseModule):
             prog_bar=True,
         )
 
-        # if loss.isnan():
-        #     return None
-
         return loss
-    
+
     def forward(self, batch):
         """
         propery in batch:
@@ -148,7 +136,6 @@ class CrystPretrainModel(BaseModule):
         """
         pass
 
-    
     def validation_step(self, batch: Any, batch_idx: int) -> torch.Tensor:
         pass
 
@@ -156,10 +143,8 @@ class CrystPretrainModel(BaseModule):
         pass
 
 
-
 class CrystGenerativePretrainModel(CrystPretrainModel):
     def __init__(self, *args, **kwargs) -> None:
-        ### can delete these paramters in the future
         kwargs['diffuse']=True
         kwargs['energy_guidance']=False
         kwargs['guidance_mode']='exp'
@@ -172,25 +157,14 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
         self.time_embedding = SinusoidalTimeEmbeddings(self.time_dim)
 
         self.logsoftmax = nn.LogSoftmax(dim=0)
-        self.softmax = nn.Softmax(dim=0) 
-
-        # if self.hparams.only_energy:
-        #     for name, param in self.decoder.named_parameters():
-        #         if 'scalar_out' not in name:
-        #             param.requires_grad = False
-        #         else:
-        #             param.requires_grad = True 
-        
-        # assert not (self.hparams.only_energy and self.hparams.only_diffusion)
+        self.softmax = nn.Softmax(dim=0)
 
     def forward(self, batch, stable_check=False):
         batch_size = batch.num_graphs
         times = self.beta_scheduler.uniform_sample_t(batch_size, self.device)
         time_emb = self.time_embedding(times)
-        # time_emb_zeros = self.time_embedding(torch.zeros_like(times, device=self.device))
 
         alphas_cumprod = self.beta_scheduler.alphas_cumprod[times]
-        # beta = self.beta_scheduler.betas[times]
 
         c0 = torch.sqrt(alphas_cumprod)
         c1 = torch.sqrt(1. - alphas_cumprod)
@@ -214,82 +188,44 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
         if self.keep_lattice:
             input_lattice = lattices
 
-        # frac_in = input_frac_coords.detach().requires_grad_(True)
-        # lattice_in = input_lattice.detach().requires_grad_(True)
         pred_l, pred_x, _, _, _, energy_t  = self.decoder(time_emb, batch.atom_types, input_frac_coords, \
                                                   input_lattice, batch.num_atoms, batch.batch)
-        
-        # pivot = int(self.trainer.max_epochs * 0.625)
-        # if self.current_epoch >= pivot:
-        #     ### the first epoch to predict energy, train energy_out only
-        #     if self.hparams.fix_diffusion:
-        #         if self.current_epoch - 1 < pivot:
-        #             for name, param in self.decoder.named_parameters():
-        #                 if 'scalar_out' not in name:
-        #                     param.requires_grad = False
-        #                 else:
-        #                     param.requires_grad = True 
-                    
-        #         loss_coord = 0.
-        #         loss_lattice = 0.
-        #     else:
-        #         tar_x = d_log_p_wrapped_normal(sigmas_per_atom * rand_x, sigmas_per_atom) / torch.sqrt(sigmas_norm_per_atom)
-        #         tar_l = rand_l
-        #         loss_coord = F.mse_loss(pred_x, tar_x)
-        #         loss_lattice = F.mse_loss(pred_l, tar_l) 
-
-        #     energy_0 = batch.y
-        #     temperature = 1.
-        #     p_label = torch.exp( -energy_0 * temperature)
-        #     # p_pred = torch.exp(-energy_t * temperature)
-        #     p_pred = torch.exp(-energy_t)
-        #     loss_energy = F.mse_loss(p_pred, p_label)
-        # else:
-        #     tar_x = d_log_p_wrapped_normal(sigmas_per_atom * rand_x, sigmas_per_atom) / torch.sqrt(sigmas_norm_per_atom)
-        #     tar_l = rand_l
-        #     loss_coord = F.mse_loss(pred_x, tar_x)
-        #     loss_lattice = F.mse_loss(pred_l, tar_l)
-        #     loss_energy = 0.
-
 
         loss_coord = 0.
         loss_lattice = 0.
         loss_energy = 0.
 
-
         if not self.hparams.only_energy:
             tar_x = d_log_p_wrapped_normal(sigmas_per_atom * rand_x, sigmas_per_atom) / torch.sqrt(sigmas_norm_per_atom)
             tar_l = rand_l
             loss_coord = F.mse_loss(pred_x, tar_x)
-            loss_lattice = F.mse_loss(pred_l, tar_l) 
-            
+            loss_lattice = F.mse_loss(pred_l, tar_l)
+
 
         if not self.hparams.only_diffusion:
             if self.hparams.exp_energy_loss:
                 energy_0 = batch.y
                 temperature = 1.
                 p_label = torch.exp( -energy_0 * temperature)
-                # p_pred = torch.exp(-energy_t * temperature)
                 p_pred = torch.exp(-energy_t)
             else:
                 p_label = batch.y
                 p_pred = energy_t
-                
+
             loss_energy = F.mse_loss(p_pred, p_label)
-            
+
 
         loss = (
             self.hparams.cost_lattice * loss_lattice +
-            self.hparams.cost_coord * loss_coord + 
+            self.hparams.cost_coord * loss_coord +
             self.hparams.cost_scalar * loss_energy)
-        
+
         return {
             'loss' : loss,
             'loss_lattice' : self.hparams.cost_lattice * loss_lattice,
             'loss_coord' : self.hparams.cost_coord * loss_coord,
             'loss_energy' : self.hparams.cost_scalar * loss_energy,
         }
-    
 
     @torch.no_grad()
     def pred_energy(self, batch):
@@ -302,7 +238,6 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
 
 
         return outputs[-1].squeeze(-1)
-    
 
     @torch.no_grad()
     def get_rep(self, batch):
@@ -315,7 +250,6 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
         node_features, graph_features = self.decoder(time_emb_zeros, batch.atom_types, frac_coords % 1, lattices, batch.num_atoms, batch.batch, only_rep=True)
 
         return node_features, graph_features
-    
 
     @torch.no_grad()
     def sample(self, batch, energy_model=None, step_lr = 1e-5, energy_guidance=False, aug=1.):
@@ -324,8 +258,7 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
         l_T, x_T = torch.randn([batch_size, 3, 3]).to(self.device), torch.rand([batch.num_nodes, 3]).to(self.device)
 
         time_start = self.beta_scheduler.timesteps
-        # time_start = 2
-      
+
         traj = {time_start : {
             'num_atoms' : batch.num_atoms,
             'atom_types' : batch.atom_types,
@@ -338,7 +271,7 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
             times = torch.full((batch_size, ), t, device = self.device)
 
             time_emb = self.time_embedding(times)
-            
+
             alphas = self.beta_scheduler.alphas[t]
             alphas_cumprod = self.beta_scheduler.alphas_cumprod[t]
 
@@ -361,14 +294,13 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
             rand_x = torch.randn_like(x_T) if t > 1 else torch.zeros_like(x_T)
 
             step_size = step_lr * (sigma_x / self.sigma_scheduler.sigma_begin) ** 2
-            # step_size = step_lr / (sigma_norm * (self.sigma_scheduler.sigma_begin) ** 2)
             std_x = torch.sqrt(2 * step_size)
 
             pred_l, pred_x, _, _, _, _ = self.decoder(time_emb, batch.atom_types, x_t, l_t, batch.num_atoms, batch.batch)
 
             pred_x = pred_x * torch.sqrt(sigma_norm)
 
-            x_t_minus_05 = x_t - step_size * pred_x + std_x * rand_x 
+            x_t_minus_05 = x_t - step_size * pred_x + std_x * rand_x
 
             l_t_minus_05 = l_t
 
@@ -377,10 +309,10 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
             rand_l = torch.randn_like(l_T) if t > 1 else torch.zeros_like(l_T)
             rand_x = torch.randn_like(x_T) if t > 1 else torch.zeros_like(x_T)
 
-            adjacent_sigma_x = self.sigma_scheduler.sigmas[t-1] 
+            adjacent_sigma_x = self.sigma_scheduler.sigmas[t-1]
             step_size = (sigma_x ** 2 - adjacent_sigma_x ** 2)
-            std_x = torch.sqrt((adjacent_sigma_x ** 2 * (sigma_x ** 2 - adjacent_sigma_x ** 2)) / (sigma_x ** 2))   
-              
+            std_x = torch.sqrt((adjacent_sigma_x ** 2 * (sigma_x ** 2 - adjacent_sigma_x ** 2)) / (sigma_x ** 2))
+
             if energy_guidance:
                 with torch.enable_grad():
                     with RequiresGradContext(x_t_minus_05, l_t_minus_05, requires_grad=True):
@@ -390,21 +322,18 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
                         grad_outputs = [torch.ones_like(energy_t)]
                         grad_x, grad_l = grad(energy_t, [x_t_minus_05, l_t_minus_05], grad_outputs = grad_outputs, allow_unused=True)
 
-                # pred_x += grad_x
-                # pred_l += torch.sqrt(1 - alphas_cumprod).unsqueeze(-1).unsqueeze(-1) * grad_l
-
                 pred_x = pred_x * torch.sqrt(sigma_norm)
-                x_t_minus_1 = x_t_minus_05 - step_size * pred_x - (std_x ** 2) * aug * grad_x + std_x * rand_x 
-                l_t_minus_1 = c0 * (l_t_minus_05 - c1 * pred_l) - (sigmas ** 2) * aug * grad_l + sigmas * rand_l 
+                x_t_minus_1 = x_t_minus_05 - step_size * pred_x - (std_x ** 2) * aug * grad_x + std_x * rand_x
+                l_t_minus_1 = c0 * (l_t_minus_05 - c1 * pred_l) - (sigmas ** 2) * aug * grad_l + sigmas * rand_l
                 x_t_minus_1 = x_t_minus_1 % 1.
                 del grad_x, grad_l
             else:
                 pred_l, pred_x, _, _, _, _ = self.decoder(time_emb, batch.atom_types, x_t_minus_05, l_t_minus_05, batch.num_atoms, batch.batch)
                 pred_x = pred_x * torch.sqrt(sigma_norm)
-                x_t_minus_1 = x_t_minus_05 - step_size * pred_x + std_x * rand_x 
-                l_t_minus_1 = c0 * (l_t_minus_05 - c1 * pred_l) + sigmas * rand_l 
+                x_t_minus_1 = x_t_minus_05 - step_size * pred_x + std_x * rand_x
+                l_t_minus_1 = c0 * (l_t_minus_05 - c1 * pred_l) + sigmas * rand_l
                 x_t_minus_1 = x_t_minus_1 % 1.
-                
+
             if t == 1:
                 time_embd_zeros = self.time_embedding(torch.zeros_like(times, device=self.device))
                 if energy_model is not None:
@@ -415,7 +344,6 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
                 self.scaler.match_device(energy_t)
                 energy_t = self.scaler.inverse_transform(energy_t)
             else:
-                # pass
                 energy_t = torch.zeros_like(batch.num_atoms).unsqueeze(-1).to(self.device)
 
 
@@ -424,9 +352,9 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
                 'atom_types' : batch.atom_types,
                 'frac_coords' : x_t_minus_1,
                 'lattices' : l_t_minus_1,
-                'energy': energy_t.squeeze(-1),                
+                'energy': energy_t.squeeze(-1),
             }
-            
+
 
         traj_stack = {
             'num_atoms' : batch.num_atoms,
@@ -437,7 +365,6 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
 
         return traj[0], traj_stack
 
-    
     @torch.no_grad()
     def relax(self, batch, step_size=0.005, num_steps=2, add_noise=False, mode='gradient', relax_threshold=0.08, return_relax_only=False):
 
@@ -457,7 +384,7 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
                         _, _, _, _, _, energy = self.decoder(time_emb_zeros, batch.atom_types, frac_coords, lattices, batch.num_atoms, batch.batch)
                         grad_outputs = [torch.ones_like(energy)]
                         grad_x, grad_l = grad(energy, [frac_coords, lattices], grad_outputs = grad_outputs, allow_unused=True)
-                
+
                 noise_scale = 2 * step_size if  add_noise else 0.
                 noise_x = torch.randn_like(frac_coords) * noise_scale
                 noise_l = torch.randn_like(lattices) *  noise_scale
@@ -468,49 +395,27 @@ class CrystGenerativePretrainModel(CrystPretrainModel):
 
                 if step == 0:
                     pred_energy = energy
-
-            # frac_coords = (frac_coords - step_size * grad_x) % 1
-            # lattices = lattices - step_size * grad_l
-            # del grad_x, grad_l
         else:
             frac_coords.requires_grad = True
             lattices.requires_grad = True
             # Set up the L-BFGS optimizer
             optimizer = torch.optim.LBFGS([frac_coords, lattices], lr=step_size, max_iter=num_steps)
-            # print('pre: ', frac_coords[:5])
 
             def closure():
                 optimizer.zero_grad()    # Clear any existing gradients
                 with torch.enable_grad():
-                    # with RequiresGradContext(frac_coords, lattices, requires_grad=True):
                     _, _, _, _, _, energy = self.decoder(time_emb_zeros, batch.atom_types, frac_coords, lattices, batch.num_atoms, batch.batch)
                 energy = energy.mean()
                 energy.backward()        # Calculate gradients w.r.t. x
-                # print('----energy: ', energy.item())
                 return energy            # Return the energy (for L-BFGS to minimize)
 
             # Run the optimization loop
             optimizer.step(closure)
             frac_coords %= 1.
-            # print('after: ', frac_coords[:5])
 
         _, _, _, _, _, relaxed_energy = self.decoder(time_emb_zeros, batch.atom_types, frac_coords, lattices, batch.num_atoms, batch.batch)
 
         if pred_energy is None:
             pred_energy = relaxed_energy
-
-        # relax_threshold = self.scaler.transform(relax_threshold)
-        # relax_idx = (batch.y <= relax_threshold)
-        # lattice_mask = relax_idx.unsqueeze(-1).repeat(1, 3, 3)
-        # frac_mask = relax_idx.repeat_interleave(batch.num_atoms, dim=0).repeat(1, 3)
-        
-        # if return_relax_only:
-        #     frac_coords = frac_coords[frac_mask]
-        #     lattices = lattices[lattice_mask]
-        #     relaxed_energy = relaxed_energy[relax_idx]
-        # else:
-        #     frac_coords[~frac_mask] = frac_coords_base[~frac_mask]
-        #     lattices[~lattice_mask] = lattices_base[~lattice_mask]
-        #     relaxed_energy[~relax_idx] = batch.y[~relax_idx]
 
         return frac_coords.detach(), lattices.detach(), pred_energy.detach(), relaxed_energy.detach()

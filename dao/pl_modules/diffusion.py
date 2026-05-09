@@ -31,7 +31,6 @@ MAX_ATOMIC_NUM=100
 class BaseModule(pl.LightningModule):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__()
-        # populate self.hparams with args and kwargs automagically!
         self.save_hyperparameters()
         if hasattr(self.hparams, "model"):
             self._hparams = self.hparams.model
@@ -47,8 +46,6 @@ class BaseModule(pl.LightningModule):
         )
         return {"optimizer": opt, "lr_scheduler": scheduler, "monitor": "val_loss"}
 
-
-### Model definition
 
 class SinusoidalTimeEmbeddings(nn.Module):
     """ Attention is all you need. """
@@ -80,7 +77,6 @@ class CSPDiffusion(BaseModule):
         self.time_embedding = SinusoidalTimeEmbeddings(self.time_dim)
         self.keep_lattice = self.hparams.cost_lattice < 1e-5
         self.keep_coords = self.hparams.cost_coord < 1e-5
-    
 
     def forward(self, batch):
         """
@@ -119,7 +115,6 @@ class CSPDiffusion(BaseModule):
             sigmas_per_atom = sigmas.repeat_interleave(batch.num_atoms)[:, None]
             sigmas_norm_per_atom = sigmas_norm.repeat_interleave(batch.num_atoms)[:, None]
             input_frac_coords = (frac_coords + sigmas_per_atom * rand_x) % 1.
-
 
         if not self.use_time or self.keep_coords:
             input_frac_coords = frac_coords
@@ -160,9 +155,6 @@ class CSPDiffusion(BaseModule):
                 'loss_scalar': 0.
             }
 
-
-
-
     @torch.no_grad()
     def sample(self, batch, step_lr = 1e-5):
 
@@ -185,7 +177,6 @@ class CSPDiffusion(BaseModule):
             'lattices' : l_T
         }}
 
-
         for t in tqdm(range(time_start, 0, -1)):
 
             times = torch.full((batch_size, ), t, device = self.device)
@@ -198,7 +189,6 @@ class CSPDiffusion(BaseModule):
             sigmas = self.beta_scheduler.sigmas[t]
             sigma_x = self.sigma_scheduler.sigmas[t]
             sigma_norm = self.sigma_scheduler.sigmas_norm[t]
-
 
             c0 = 1.0 / torch.sqrt(alphas)
             c1 = (1 - alphas) / torch.sqrt(1 - alphas_cumprod)
@@ -221,7 +211,6 @@ class CSPDiffusion(BaseModule):
             rand_x = torch.randn_like(x_T) if t > 1 else torch.zeros_like(x_T)
 
             step_size = step_lr * (sigma_x / self.sigma_scheduler.sigma_begin) ** 2
-            # step_size = step_lr / (sigma_norm * (self.sigma_scheduler.sigma_begin) ** 2)
             std_x = torch.sqrt(2 * step_size)
 
             pred_l, pred_x = self.decoder(time_emb, batch.atom_types, x_t, l_t, batch.num_atoms, batch.batch)
@@ -249,7 +238,6 @@ class CSPDiffusion(BaseModule):
 
             l_t_minus_1 = c0 * (l_t_minus_05 - c1 * pred_l) + sigmas * rand_l if not self.keep_lattice else l_t
 
-
             traj[t - 1] = {
                 'num_atoms' : batch.num_atoms,
                 'atom_types' : batch.atom_types,
@@ -266,8 +254,6 @@ class CSPDiffusion(BaseModule):
 
         return traj[0], traj_stack
 
-
-
     def training_step(self, batch: Any, batch_idx: int) -> torch.Tensor:
 
         output_dict = self(batch)
@@ -276,7 +262,6 @@ class CSPDiffusion(BaseModule):
         loss_coord = output_dict['loss_coord']
         loss_scalar = output_dict['loss_scalar']
         loss = output_dict['loss']
-
 
         self.log_dict(
             {'train_loss': loss,
@@ -333,7 +318,6 @@ class CSPDiffusion(BaseModule):
         }
 
         return log_dict, loss
-
 
 
 class CSPDenoise(BaseModule):
@@ -405,7 +389,6 @@ class CSPDenoise(BaseModule):
             'loss_coord' : loss_coord,
             'loss_scalar': 0.
         }
-
 
     def training_step(self, batch: Any, batch_idx: int) -> torch.Tensor:
         output_dict = self(batch)

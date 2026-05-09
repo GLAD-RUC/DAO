@@ -14,7 +14,6 @@ import numpy as np
 import random
 
 
-
 def setup_seed(seed):
      torch.manual_seed(seed)
      torch.cuda.manual_seed_all(seed)
@@ -37,7 +36,6 @@ def cal_grad(x, y):
     return yx_grad
 
 
-
 def langevin_sampling(data, grad, step_size=0.01, noise_scale=0.01, num_steps=10):
     for _ in range(num_steps):        
         noise = torch.randn_like(data) * noise_scale  
@@ -47,7 +45,6 @@ def langevin_sampling(data, grad, step_size=0.01, noise_scale=0.01, num_steps=10
     return data
 
 
-
 def judge_requires_grad(obj):
     if isinstance(obj, torch.Tensor):
         return obj.requires_grad
@@ -55,7 +52,8 @@ def judge_requires_grad(obj):
         return next(obj.parameters()).requires_grad
     else:
         raise TypeError
-    
+
+
 class RequiresGradContext(object):
     def __init__(self, *objs, requires_grad):
         self.objs = objs
@@ -77,7 +75,6 @@ class RequiresGradContext(object):
             obj.requires_grad_(backup)
 
 
-
 def load_state_dict_from_checkpoint(ckpt_path):
     ckpt = torch.load(ckpt_path, map_location="cpu")
     state_dict = ckpt["state_dict"]
@@ -87,6 +84,7 @@ def load_state_dict_from_checkpoint(ckpt_path):
 def exists(x):
     return x is not None
 
+
 class LayerNorm(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -95,32 +93,6 @@ class LayerNorm(nn.Module):
 
     def forward(self, x):
         return F.layer_norm(x, x.shape[-1:], self.gamma, self.beta)
-
-
-# class ResidueNorm(nn.Module):
-#     def __init__(
-#         self,
-#         dim,
-#         fn,
-#         norm_mode='pre'
-#     ):
-#         super().__init__()
-#         self.dim = dim
-#         self.fn = fn
-#         self.norm = nn.LayerNorm(dim)
-#         self.residue = GatedResidual(dim)
-#         self.norm_mode=norm_mode
-
-#     def forward(self, x, *args, **kwargs):
-#         if self.norm_mode == 'pre':
-#             normed_x = self.norm(x)
-#             x_ = self.fn(normed_x, *args,**kwargs)
-#             return self.residue(x_, x)
-#         elif self.norm_mode == 'post':
-#             x_ = self.fn(x, *args,**kwargs)
-#             out = self.residue(x_, x)
-#             return self.norm(out)
-#         return None
 
 
 CGCNN_LIST = [
@@ -228,7 +200,6 @@ CGCNN_LIST = [
 ]
 
 
-
 def convert_tensor_to_value(metrics):
     for key, value in metrics.items():
         if hasattr(value, "item"):  
@@ -236,9 +207,6 @@ def convert_tensor_to_value(metrics):
         elif isinstance(value, dict):  
             metrics[key] = convert_tensor_to_value(value)
     return metrics
-
-
-
 
 
 class SinusoidsEmbedding(nn.Module):
@@ -360,5 +328,3 @@ WANDB_DIR.mkdir(parents=True, exist_ok=True)
 
 # Set the cwd to the project root
 os.chdir(PROJECT_ROOT)
-
-

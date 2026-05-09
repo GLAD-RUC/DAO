@@ -92,11 +92,9 @@ def run(cfg: DictConfig) -> None:
         cfg.data.datamodule, pretrain=cfg.train.pretrain, _recursive_=False
     )
 
-
     # Instantiate model
     hydra.utils.log.info(f"Instantiating <{cfg.model._target_}>")
-    
-    
+
     model: pl.LightningModule = hydra.utils.instantiate(
         cfg.model,
         optim=cfg.optim,
@@ -136,19 +134,6 @@ def run(cfg: DictConfig) -> None:
     yaml_conf: str = OmegaConf.to_yaml(cfg=cfg)
     (hydra_dir / "hparams.yaml").write_text(yaml_conf)
 
-    # ckpts = list(hydra_dir.glob('*.ckpt'))
-    # if len(ckpts) > 0:
-    #     last_ckpt = os.path.join(os.path.dirname(ckpts[0]), 'last.ckpt')
-    #     if os.path.exists(last_ckpt):
-    #         ckpt = last_ckpt
-    #     else:
-    #         ckpt_epochs = np.array([int(ckpt.parts[-1].split('-')[0].split('=')[1]) for ckpt in ckpts if ckpt.parts[-1]])
-    #         ckpt = str(ckpts[ckpt_epochs.argsort()[-1]])
-    #         hydra.utils.log.info(f"found checkpoint: {ckpt}")
-    # else:
-    #     ckpt = None
-
-    
     hydra.utils.log.info("Instantiating the Trainer")
     trainer = pl.Trainer(
         default_root_dir=hydra_dir,
@@ -160,8 +145,8 @@ def run(cfg: DictConfig) -> None:
         resume_from_checkpoint=None,
         terminate_on_nan=True,
         **cfg.train.pl_trainer,
-    ) 
-    
+    )
+
     log_hyperparameters(trainer=trainer, model=model, cfg=cfg)
 
     if cfg.get("ckpt_path") is not None and len(cfg.get("ckpt_path")) > 0:
@@ -183,7 +168,7 @@ def run(cfg: DictConfig) -> None:
                 resume_from_checkpoint=cfg.ckpt_path,
                 terminate_on_nan=True,
                 **cfg.train.pl_trainer,
-            ) 
+            )
             # resume training
             hydra.utils.log.info(f"Resume training from checkpoint {cfg.ckpt_path}")
             trainer.fit(model=model, datamodule=datamodule)
@@ -191,16 +176,15 @@ def run(cfg: DictConfig) -> None:
         # train
         hydra.utils.log.info("Start training!")
         trainer.fit(model=model, datamodule=datamodule)
-    
 
     if not cfg.train.pretrain:
         hydra.utils.log.info("Starting testing!")
         trainer.test(datamodule=datamodule)
 
         metrics = convert_tensor_to_value(trainer.callback_metrics)
-    
+
         print(metrics)
-        
+
         # save the metrics to a json file
         with open(f"{hydra_dir}/metrics.json", "w") as f:
             json.dump(metrics, f, indent=4)

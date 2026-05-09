@@ -25,8 +25,6 @@ from torch.optim.lr_scheduler import LinearLR, SequentialLR
 MAX_ATOMIC_NUM=100
 
 
-### Model definition
-
 class SinusoidalTimeEmbeddings(nn.Module):
     """ Attention is all you need. """
     def __init__(self, dim):
@@ -41,7 +39,6 @@ class SinusoidalTimeEmbeddings(nn.Module):
         embeddings = time[:, None] * embeddings[None, :]
         embeddings = torch.cat((embeddings.sin(), embeddings.cos()), dim=-1)
         return embeddings
-    
 
 
 class IEPModule(BaseModule):
@@ -53,7 +50,6 @@ class IEPModule(BaseModule):
         try:   
             pretrain_model = CrystGenerativePretrainModel.load_from_checkpoint(self.hparams.pretrain_repr)
             self.decoder = deepcopy(pretrain_model.decoder)
-            # self.decoder.freeze()
             for name, param in self.decoder.named_parameters():
                 if 'scalar_out' in name:
                     param.requires_grad = True
@@ -70,8 +66,7 @@ class IEPModule(BaseModule):
         self.time_embedding = SinusoidalTimeEmbeddings(self.time_dim)
 
         self.logsoftmax = nn.LogSoftmax(dim=0)
-        self.softmax = nn.Softmax(dim=0) 
-
+        self.softmax = nn.Softmax(dim=0)
 
     def forward(self, batch, stable_check=True):
         batch_size = batch.num_graphs
@@ -111,16 +106,12 @@ class IEPModule(BaseModule):
         temperature = 1.
 
         p_label = torch.exp( -energy_0 * temperature)
-        # p_pred = torch.exp(-energy_t * temperature)
         p_pred = torch.exp(-energy_t)
 
         loss_scalar = F.mse_loss(p_pred, p_label)
         return { 'loss' : self.hparams.cost_scalar * loss_scalar }
 
-
-
     def training_step(self, batch: Any, batch_idx: int) -> torch.Tensor:
-        ###### here
         output_dict = self(batch, stable_check=False)
 
         loss = output_dict['loss']
@@ -135,14 +126,10 @@ class IEPModule(BaseModule):
             prog_bar=True,
         )
 
-        # if loss.isnan():
-        #     return None
-
         return loss
-    
+
     def validation_step(self, batch: Any, batch_idx: int) -> torch.Tensor:
         pass
 
     def test_step(self, batch: Any, batch_idx: int) -> torch.Tensor:
         pass
-    

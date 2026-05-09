@@ -21,18 +21,12 @@ from p_tqdm import p_umap
 
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-# from pyxtal.symmetry import Group
-# from pyxtal import pyxtal
-
 from pathos.pools import ProcessPool as Pool
-# from multiprocessing import Pool
-from tqdm import tqdm 
-from functools import partial 
+from tqdm import tqdm
+from functools import partial
 
 import faulthandler
 faulthandler.enable()
-
-
 
 # Tensor of unit cells. Assumes 27 cells in -1, 0, 1 offsets in the x and y dimensions
 # Note that differing from OCP, we have 27 offsets here because we are in 3D
@@ -69,26 +63,18 @@ OFFSET_LIST = [
 EPSILON = 1e-5
 
 chemical_symbols = [
-    # 0
     'X',
-    # 1
     'H', 'He',
-    # 2
     'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne',
-    # 3
     'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar',
-    # 4
     'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
     'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr',
-    # 5
     'Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd',
     'In', 'Sn', 'Sb', 'Te', 'I', 'Xe',
-    # 6
     'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy',
     'Ho', 'Er', 'Tm', 'Yb', 'Lu',
     'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi',
     'Po', 'At', 'Rn',
-    # 7
     'Fr', 'Ra', 'Ac', 'Th', 'Pa', 'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk',
     'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr',
     'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg', 'Cn', 'Nh', 'Fl', 'Mc',
@@ -115,9 +101,8 @@ def build_crystal(crystal_str, niggli=True, primitive=False):
         coords=crystal.frac_coords,
         coords_are_cartesian=False,
     )
-    # match is gaurantteed because cif only uses lattice params & frac_coords
-    # assert canonical_crystal.matches(crystal)
     return canonical_crystal
+
 
 def refine_spacegroup(crystal, tol=0.01):
     spga = SpacegroupAnalyzer(crystal, symprec=tol)
@@ -170,6 +155,7 @@ def get_symmetry_info(crystal, tol=0.01):
     )
     return crystal, sym_info
 
+
 def build_crystal_graph(crystal, graph_method='crystalnn'):
     """
     """
@@ -181,7 +167,7 @@ def build_crystal_graph(crystal, graph_method='crystalnn'):
         except:
             crystalNN_tmp = local_env.CrystalNN(distance_cutoffs=None, x_diff_weight=-1, porous_adjustment=False, search_cutoff=10)
             crystal_graph = StructureGraph.with_local_env_strategy(
-                crystal, crystalNN_tmp) 
+                crystal, crystalNN_tmp)
     elif graph_method == 'none':
         pass
     else:
@@ -193,7 +179,6 @@ def build_crystal_graph(crystal, graph_method='crystalnn'):
     lengths = lattice_parameters[:3]
     angles = lattice_parameters[3:]
 
-    ### compare two arrays within a tolerance
     assert np.allclose(crystal.lattice.matrix,
                        lattice_params_to_matrix(*lengths, *angles))
 
@@ -312,6 +297,7 @@ def lattice_matrix_to_params(matrix):
     alpha, beta, gamma = angles
     return a, b, c, alpha, beta, gamma
 
+
 def lattices_to_params_shape(lattices):
 
     lengths = torch.sqrt(torch.sum(lattices ** 2, dim=-1))
@@ -339,7 +325,7 @@ def frac_to_cart_coords(
     if lattices is None:
         lattices = lattice_params_to_matrix_torch(lengths, angles)
     lattice_nodes = torch.repeat_interleave(lattices, num_atoms, dim=0)
-    pos = torch.einsum('bi,bij->bj', frac_coords, lattice_nodes)  # cart coords
+    pos = torch.einsum('bi,bij->bj', frac_coords, lattice_nodes)
 
     return pos
 
@@ -352,7 +338,6 @@ def cart_to_frac_coords(
     regularized = True
 ):
     lattice = lattice_params_to_matrix_torch(lengths, angles)
-    # use pinv in case the predicted lattice is not rank 3
     inv_lattice = torch.linalg.pinv(lattice)
     inv_lattice_nodes = torch.repeat_interleave(inv_lattice, num_atoms, dim=0)
     frac_coords = torch.einsum('bi,bij->bj', cart_coords, inv_lattice_nodes)
@@ -381,18 +366,16 @@ def get_pbc_distances(
         pos = coords
     else:
         lattice_nodes = torch.repeat_interleave(lattices, num_atoms, dim=0)
-        pos = torch.einsum('bi,bij->bj', coords, lattice_nodes)  # cart coords
+        pos = torch.einsum('bi,bij->bj', coords, lattice_nodes)
 
     j_index, i_index = edge_index
 
     distance_vectors = pos[j_index] - pos[i_index]
 
-    # correct for pbc
     lattice_edges = torch.repeat_interleave(lattices, num_bonds, dim=0)
     offsets = torch.einsum('bi,bij->bj', to_jimages.float(), lattice_edges)
     distance_vectors += offsets
 
-    # compute distances
     distances = distance_vectors.norm(dim=-1)
 
     out = {
@@ -415,6 +398,7 @@ def radius_graph_pbc_wrapper(data, radius, max_num_neighbors_threshold, device):
     return radius_graph_pbc(
         cart_coords, data.lengths, data.angles, data.num_atoms, radius,
         max_num_neighbors_threshold, device)
+
 
 def repeat_blocks(
     sizes,
@@ -457,7 +441,6 @@ def repeat_blocks(
     assert sizes.dim() == 1
     assert all(sizes >= 0)
 
-    # Remove 0 sizes
     sizes_nonzero = sizes > 0
     if not torch.all(sizes_nonzero):
         assert block_inc == 0  # Implementing this is not worth the effort
@@ -483,19 +466,14 @@ def repeat_blocks(
         assert repeats >= 0
         insert_dummy = False
 
-    # Get repeats for each group using group lengths/sizes
     r1 = torch.repeat_interleave(
         torch.arange(len(sizes), device=sizes.device), repeats
     )
 
-    # Get total size of output array, as needed to initialize output indexing array
     N = (sizes * repeats).sum()
 
     # Initialize indexing array with ones as we need to setup incremental indexing
     # within each group when cumulatively summed at the final stage.
-    # Two steps here:
-    # 1. Within each group, we have multiple sequences, so setup the offsetting
-    # at each sequence lengths by the seq. lengths preceding those.
     id_ar = torch.ones(N, dtype=torch.long, device=sizes.device)
     id_ar[0] = 0
     insert_index = sizes[r1[:-1]].cumsum(0)
@@ -505,10 +483,8 @@ def repeat_blocks(
         diffs = r1[1:] - r1[:-1]
         indptr = torch.cat((sizes.new_zeros(1), diffs.cumsum(0)))
         if continuous_indexing:
-            # If a group was skipped (repeats=0) we need to add its size
             insert_val += segment_csr(sizes[: r1[-1]], indptr, reduce="sum")
 
-        # Add block increments
         if isinstance(block_inc, torch.Tensor):
             insert_val += segment_csr(
                 block_inc[: r1[-1]], indptr, reduce="sum"
@@ -520,14 +496,10 @@ def repeat_blocks(
     else:
         idx = r1[1:] != r1[:-1]
         if continuous_indexing:
-            # 2. For each group, make sure the indexing starts from the next group's
-            # first element. So, simply assign 1s there.
             insert_val[idx] = 1
 
-        # Add block increments
         insert_val[idx] += block_inc
 
-    # Add repeat_inc within each group
     if isinstance(repeat_inc, torch.Tensor):
         insert_val += repeat_inc[r1[:-1]]
         if isinstance(repeats, torch.Tensor):
@@ -538,14 +510,12 @@ def repeat_blocks(
         insert_val += repeat_inc
         repeat_inc_inner = repeat_inc
 
-    # Subtract the increments between groups
     if isinstance(repeats, torch.Tensor):
         repeats_inner = repeats[repeats > 0][:-1]
     else:
         repeats_inner = repeats
     insert_val[r1[1:] != r1[:-1]] -= repeat_inc_inner * repeats_inner
 
-    # Assign index-offsetting values
     id_ar[insert_index] = insert_val
 
     if insert_dummy:
@@ -553,32 +523,23 @@ def repeat_blocks(
         if continuous_indexing:
             id_ar[0] -= 1
 
-    # Set start index now, in case of insertion due to leading repeats=0
     id_ar[0] += start_idx
 
-    # Finally index into input array for the group repeated o/p
     res = id_ar.cumsum(0)
     return res
 
 
-
 def radius_graph_pbc(pos, lengths, angles, natoms, radius, max_num_neighbors_threshold, device, lattices=None):
-    
-    # device = pos.device
     batch_size = len(natoms)
     if lattices is None:
         cell = lattice_params_to_matrix_torch(lengths, angles)
     else:
         cell = lattices
-    # position of the atoms
     atom_pos = pos
 
-
-    # Before computing the pairwise distances between atoms, first create a list of atom indices to compare for the entire batch
     num_atoms_per_image = natoms
     num_atoms_per_image_sqr = (num_atoms_per_image**2).long()
 
-    # index offset between images
     index_offset = (
         torch.cumsum(num_atoms_per_image, dim=0) - num_atoms_per_image
     )
@@ -590,11 +551,10 @@ def radius_graph_pbc(pos, lengths, angles, natoms, radius, max_num_neighbors_thr
         num_atoms_per_image, num_atoms_per_image_sqr
     )
 
-    # Compute a tensor containing sequences of numbers that range from 0 to num_atoms_per_image_sqr for each image
-    # that is used to compute indices for the pairs of atoms. This is a very convoluted way to implement
-    # the following (but 10x faster since it removes the for loop)
-    # for batch_idx in range(batch_size):
-    #    batch_count = torch.cat([batch_count, torch.arange(num_atoms_per_image_sqr[batch_idx], device=device)], dim=0)
+    # Compute a tensor containing sequences of numbers that range from 0 to
+    # num_atoms_per_image_sqr for each image that is used to compute indices
+    # for the pairs of atoms. This is a convoluted but 10x faster alternative
+    # to a for loop.
     num_atom_pairs = torch.sum(num_atoms_per_image_sqr)
     index_sqr_offset = (
         torch.cumsum(num_atoms_per_image_sqr, dim=0) - num_atoms_per_image_sqr
@@ -606,8 +566,6 @@ def radius_graph_pbc(pos, lengths, angles, natoms, radius, max_num_neighbors_thr
         torch.arange(num_atom_pairs, device=device) - index_sqr_offset
     )
 
-    # Compute the indices for the pairs of atoms (using division and mod)
-    # If the systems get too large this apporach could run into numerical precision issues
     index1 = (
         torch.div(
             atom_count_sqr, num_atoms_per_image_expand, rounding_mode="floor"
@@ -616,7 +574,6 @@ def radius_graph_pbc(pos, lengths, angles, natoms, radius, max_num_neighbors_thr
     index2 = (
         atom_count_sqr % num_atoms_per_image_expand
     ) + index_offset_expand
-    # Get the positions for each atom
     pos1 = torch.index_select(atom_pos, 0, index1)
     pos2 = torch.index_select(atom_pos, 0, index2)
 
@@ -634,31 +591,29 @@ def radius_graph_pbc(pos, lengths, angles, natoms, radius, max_num_neighbors_thr
     cross_a3a1 = torch.cross(cell[:, 2], cell[:, 0], dim=-1)
     inv_min_dist_a2 = torch.norm(cross_a3a1 / cell_vol, p=2, dim=-1)
     min_dist_a2 = (1 / inv_min_dist_a2).reshape(-1,1)
-    
+
     cross_a1a2 = torch.cross(cell[:, 0], cell[:, 1], dim=-1)
     inv_min_dist_a3 = torch.norm(cross_a1a2 / cell_vol, p=2, dim=-1)
     min_dist_a3 = (1 / inv_min_dist_a3).reshape(-1,1)
-    
+
     # Take the max over all images for uniformity. This is essentially padding.
     # Note that this can significantly increase the number of computed distances
     # if the required repetitions are very different between images
     # (which they usually are). Changing this to sparse (scatter) operations
     # might be worth the effort if this function becomes a bottleneck.
     max_rep = torch.ones(3, dtype=torch.long, device=device)
-    min_dist = torch.cat([min_dist_a1, min_dist_a2, min_dist_a3], dim=-1) # N_graphs * 3
-#     reps = torch.cat([rep_a1.reshape(-1,1), rep_a2.reshape(-1,1), rep_a3.reshape(-1,1)], dim=1) # N_graphs * 3
-    
+    min_dist = torch.cat([min_dist_a1, min_dist_a2, min_dist_a3], dim=-1)
+
     unit_cell_all = []
     num_cells_all = []
 
-    # Tensor of unit cells
     cells_per_dim = [
         torch.arange(-rep, rep + 1, device=device, dtype=torch.float)
         for rep in max_rep
     ]
-    
+
     unit_cell = torch.cat([_.reshape(-1,1) for _ in torch.meshgrid(cells_per_dim)], dim=-1)
-    
+
     num_cells = len(unit_cell)
     unit_cell_per_atom = unit_cell.view(1, num_cells, 3).repeat(
         len(index2), 1, 1
@@ -668,38 +623,25 @@ def radius_graph_pbc(pos, lengths, angles, natoms, radius, max_num_neighbors_thr
         batch_size, -1, -1
     )
 
-    # Compute the x, y, z positional offsets for each cell in each image
     data_cell = torch.transpose(cell, 1, 2)
     pbc_offsets = torch.bmm(data_cell, unit_cell_batch)
     pbc_offsets_per_atom = torch.repeat_interleave(
         pbc_offsets, num_atoms_per_image_sqr, dim=0
     )
 
-    # Expand the positions and indices for the 9 cells
     pos1 = pos1.view(-1, 3, 1).expand(-1, -1, num_cells)
     pos2 = pos2.view(-1, 3, 1).expand(-1, -1, num_cells)
     index1 = index1.view(-1, 1).repeat(1, num_cells).view(-1)
     index2 = index2.view(-1, 1).repeat(1, num_cells).view(-1)
-    # Add the PBC offsets for the second atom
     pos2 = pos2 + pbc_offsets_per_atom
 
-#     # Compute the squared distance between atoms
     atom_distance_sqr = torch.sum((pos1 - pos2) ** 2, dim=1)
     atom_distance_sqr = atom_distance_sqr.view(-1)
 
-    # Remove pairs that are too far apart
-    
-    
-    radius_real = (min_dist.min(dim=-1)[0] + 0.01)#.clamp(max=radius)
-    
+    radius_real = (min_dist.min(dim=-1)[0] + 0.01)
     radius_real = torch.repeat_interleave(radius_real, num_atoms_per_image_sqr * num_cells)
 
-    # print(min_dist.min(dim=-1)[0])
-    
-    # radius_real = radius
-    
     mask_within_radius = torch.le(atom_distance_sqr, radius_real * radius_real)
-    # Remove pairs with the same atoms (distance = 0.0)
     mask_not_same = torch.gt(atom_distance_sqr, 0.0001)
     mask = torch.logical_and(mask_within_radius, mask_not_same)
     index1 = torch.masked_select(index1, mask)
@@ -709,7 +651,7 @@ def radius_graph_pbc(pos, lengths, angles, natoms, radius, max_num_neighbors_thr
     )
     unit_cell = unit_cell.view(-1, 3)
     atom_distance_sqr = torch.masked_select(atom_distance_sqr, mask)
-    
+
     if max_num_neighbors_threshold is not None:
 
         mask_num_neighbors, num_neighbors_image = get_max_neighbors_mask(
@@ -720,19 +662,17 @@ def radius_graph_pbc(pos, lengths, angles, natoms, radius, max_num_neighbors_thr
         )
 
         if not torch.all(mask_num_neighbors):
-            # Mask out the atoms to ensure each atom has at most max_num_neighbors_threshold neighbors
             index1 = torch.masked_select(index1, mask_num_neighbors)
             index2 = torch.masked_select(index2, mask_num_neighbors)
             unit_cell = torch.masked_select(
                 unit_cell.view(-1, 3), mask_num_neighbors.view(-1, 1).expand(-1, 3)
             )
             unit_cell = unit_cell.view(-1, 3)
-            
+
     else:
         ones = index1.new_ones(1).expand_as(index1)
         num_neighbors = segment_coo(ones, index1, dim_size=natoms.sum())
 
-        # Get number of (thresholded) neighbors per image
         image_indptr = torch.zeros(
             natoms.shape[0] + 1, device=device, dtype=torch.long
         )
@@ -755,7 +695,6 @@ def get_max_neighbors_mask(
     device = natoms.device
     num_atoms = natoms.sum()
 
-    # Get number of neighbors
     # segment_coo assumes sorted index
     ones = index.new_ones(1).expand_as(index)
     num_neighbors = segment_coo(ones, index, dim_size=num_atoms)
@@ -764,14 +703,12 @@ def get_max_neighbors_mask(
         max=max_num_neighbors_threshold
     )
 
-    # Get number of (thresholded) neighbors per image
     image_indptr = torch.zeros(
         natoms.shape[0] + 1, device=device, dtype=torch.long
     )
     image_indptr[1:] = torch.cumsum(natoms, dim=0)
     num_neighbors_image = segment_csr(num_neighbors_thresholded, image_indptr)
 
-    # If max_num_neighbors is below the threshold, return early
     if (
         max_num_neighbors <= max_num_neighbors_threshold
         or max_num_neighbors_threshold <= 0
@@ -781,13 +718,10 @@ def get_max_neighbors_mask(
         ).expand_as(index)
         return mask_num_neighbors, num_neighbors_image
 
-    # Create a tensor of size [num_atoms, max_num_neighbors] to sort the distances of the neighbors.
-    # Fill with infinity so we can easily remove unused distances later.
     distance_sort = torch.full(
         [num_atoms * max_num_neighbors], np.inf, device=device
     )
 
-    # Create an index map to map distances from atom_distance to distance_sort
     # index_sort_map assumes index to be sorted
     index_neighbor_offset = torch.cumsum(num_neighbors, dim=0) - num_neighbors
     index_neighbor_offset_expand = torch.repeat_interleave(
@@ -801,30 +735,21 @@ def get_max_neighbors_mask(
     distance_sort.index_copy_(0, index_sort_map, atom_distance)
     distance_sort = distance_sort.view(num_atoms, max_num_neighbors)
 
-    # Sort neighboring atoms based on distance
     distance_sort, index_sort = torch.sort(distance_sort, dim=1)
-    # Select the max_num_neighbors_threshold neighbors that are closest
     distance_real_cutoff = distance_sort[:,max_num_neighbors_threshold].reshape(-1,1).expand(-1,max_num_neighbors) + 0.01
-    
+
     mask_distance = distance_sort < distance_real_cutoff
-    
+
     index_sort = index_sort + index_neighbor_offset.view(-1, 1).expand(
         -1, max_num_neighbors
     )
-    
-    
-    # Remove "unused pairs" with infinite distances
+
     mask_finite = torch.isfinite(distance_sort)
-#     index_sort = torch.masked_select(index_sort, mask_finite)
     index_sort = torch.masked_select(index_sort, mask_finite & mask_distance)
-    
+
     num_neighbor_per_node = (mask_finite & mask_distance).sum(dim=-1)
     num_neighbors_image = segment_csr(num_neighbor_per_node, image_indptr)
-    
 
-    # At this point index_sort contains the index into index of the
-    # closest max_num_neighbors_threshold neighbors per atom
-    # Create a mask to remove all pairs not in index_sort
     mask_num_neighbors = torch.zeros(len(index), device=device, dtype=bool)
     mask_num_neighbors.index_fill_(0, index_sort, True)
 
@@ -842,14 +767,11 @@ def radius_graph_pbc_(cart_coords, lengths, angles, num_atoms,
     """
     batch_size = len(num_atoms)
 
-    # position of the atoms
     atom_pos = cart_coords
 
-    # Before computing the pairwise distances between atoms, first create a list of atom indices to compare for the entire batch
     num_atoms_per_image = num_atoms
     num_atoms_per_image_sqr = (num_atoms_per_image ** 2).long()
 
-    # index offset between images
     index_offset = (
         torch.cumsum(num_atoms_per_image, dim=0) - num_atoms_per_image
     )
@@ -861,11 +783,10 @@ def radius_graph_pbc_(cart_coords, lengths, angles, num_atoms,
         num_atoms_per_image, num_atoms_per_image_sqr
     )
 
-    # Compute a tensor containing sequences of numbers that range from 0 to num_atoms_per_image_sqr for each image
-    # that is used to compute indices for the pairs of atoms. This is a very convoluted way to implement
-    # the following (but 10x faster since it removes the for loop)
-    # for batch_idx in range(batch_size):
-    #    batch_count = torch.cat([batch_count, torch.arange(num_atoms_per_image_sqr[batch_idx], device=device)], dim=0)
+    # Compute a tensor containing sequences of numbers that range from 0 to
+    # num_atoms_per_image_sqr for each image that is used to compute indices
+    # for the pairs of atoms. This is a convoluted but 10x faster alternative
+    # to a for loop.
     num_atom_pairs = torch.sum(num_atoms_per_image_sqr)
     index_sqr_offset = (
         torch.cumsum(num_atoms_per_image_sqr, dim=0) - num_atoms_per_image_sqr
@@ -877,15 +798,12 @@ def radius_graph_pbc_(cart_coords, lengths, angles, num_atoms,
         torch.arange(num_atom_pairs, device=device) - index_sqr_offset
     )
 
-    # Compute the indices for the pairs of atoms (using division and mod)
-    # If the systems get too large this apporach could run into numerical precision issues
     index1 = (
         (atom_count_sqr // num_atoms_per_image_expand)
     ).long() + index_offset_expand
     index2 = (
         atom_count_sqr % num_atoms_per_image_expand
     ).long() + index_offset_expand
-    # Get the positions for each atom
     pos1 = torch.index_select(atom_pos, 0, index1)
     pos2 = torch.index_select(atom_pos, 0, index2)
 
@@ -899,25 +817,20 @@ def radius_graph_pbc_(cart_coords, lengths, angles, num_atoms,
         batch_size, -1, -1
     )
 
-    # lattice matrix
     lattice = lattice_params_to_matrix_torch(lengths, angles)
 
-    # Compute the x, y, z positional offsets for each cell in each image
     data_cell = torch.transpose(lattice, 1, 2)
     pbc_offsets = torch.bmm(data_cell, unit_cell_batch)
     pbc_offsets_per_atom = torch.repeat_interleave(
         pbc_offsets, num_atoms_per_image_sqr, dim=0
     )
 
-    # Expand the positions and indices for the 9 cells
     pos1 = pos1.view(-1, 3, 1).expand(-1, -1, num_cells)
     pos2 = pos2.view(-1, 3, 1).expand(-1, -1, num_cells)
     index1 = index1.view(-1, 1).repeat(1, num_cells).view(-1)
     index2 = index2.view(-1, 1).repeat(1, num_cells).view(-1)
-    # Add the PBC offsets for the second atom
     pos2 = pos2 + pbc_offsets_per_atom
 
-    # Compute the squared distance between atoms
     atom_distance_sqr = torch.sum((pos1 - pos2) ** 2, dim=1)
 
     if topk_per_pair is not None:
@@ -938,9 +851,7 @@ def radius_graph_pbc_(cart_coords, lengths, angles, num_atoms,
 
     atom_distance_sqr = atom_distance_sqr.view(-1)
 
-    # Remove pairs that are too far apart
     mask_within_radius = torch.le(atom_distance_sqr, radius * radius)
-    # Remove pairs with the same atoms (distance = 0.0)
     mask_not_same = torch.gt(atom_distance_sqr, 0.0001)
     mask = torch.logical_and(mask_within_radius, mask_not_same)
     index1 = torch.masked_select(index1, mask)
@@ -957,7 +868,6 @@ def radius_graph_pbc_(cart_coords, lengths, angles, num_atoms,
     num_neighbors = num_neighbors.long()
     max_num_neighbors = torch.max(num_neighbors).long()
 
-    # Compute neighbors per image
     _max_neighbors = copy.deepcopy(num_neighbors)
     _max_neighbors[
         _max_neighbors > max_num_neighbors_threshold
@@ -970,7 +880,6 @@ def radius_graph_pbc_(cart_coords, lengths, angles, num_atoms,
         _num_neighbors[_natoms[1:]] - _num_neighbors[_natoms[:-1]]
     )
 
-    # If max_num_neighbors is below the threshold, return early
     if (
         max_num_neighbors <= max_num_neighbors_threshold
         or max_num_neighbors_threshold <= 0
@@ -982,13 +891,10 @@ def radius_graph_pbc_(cart_coords, lengths, angles, num_atoms,
 
     atom_distance_sqr = torch.masked_select(atom_distance_sqr, mask)
 
-    # Create a tensor of size [num_atoms, max_num_neighbors] to sort the distances of the neighbors.
-    # Fill with values greater than radius*radius so we can easily remove unused distances later.
     distance_sort = torch.zeros(
         len(cart_coords) * max_num_neighbors, device=device
     ).fill_(radius * radius + 1.0)
 
-    # Create an index map to map distances from atom_distance_sqr to distance_sort
     index_neighbor_offset = torch.cumsum(num_neighbors, dim=0) - num_neighbors
     index_neighbor_offset_expand = torch.repeat_interleave(
         index_neighbor_offset, num_neighbors
@@ -1001,26 +907,19 @@ def radius_graph_pbc_(cart_coords, lengths, angles, num_atoms,
     distance_sort.index_copy_(0, index_sort_map, atom_distance_sqr)
     distance_sort = distance_sort.view(len(cart_coords), max_num_neighbors)
 
-    # Sort neighboring atoms based on distance
     distance_sort, index_sort = torch.sort(distance_sort, dim=1)
-    # Select the max_num_neighbors_threshold neighbors that are closest
     distance_sort = distance_sort[:, :max_num_neighbors_threshold]
     index_sort = index_sort[:, :max_num_neighbors_threshold]
 
-    # Offset index_sort so that it indexes into index1
     index_sort = index_sort + index_neighbor_offset.view(-1, 1).expand(
         -1, max_num_neighbors_threshold
     )
-    # Remove "unused pairs" with distances greater than the radius
     mask_within_radius = torch.le(distance_sort, radius * radius)
     index_sort = torch.masked_select(index_sort, mask_within_radius)
 
-    # At this point index_sort contains the index into index1 of the closest max_num_neighbors_threshold neighbors per atom
-    # Create a mask to remove all pairs not in index_sort
     mask_num_neighbors = torch.zeros(len(index1), device=device).bool()
     mask_num_neighbors.index_fill_(0, index_sort, True)
 
-    # Finally mask out the atoms to ensure each atom has at most max_num_neighbors_threshold neighbors
     index1 = torch.masked_select(index1, mask_num_neighbors)
     index2 = torch.masked_select(index2, mask_num_neighbors)
     unit_cell = torch.masked_select(
@@ -1055,7 +954,6 @@ def min_distance_sqr_pbc(cart_coords1, cart_coords2, lengths, angles,
     """
     batch_size = len(num_atoms)
 
-    # Get the positions for each atom
     pos1 = cart_coords1
     pos2 = cart_coords2
 
@@ -1069,23 +967,18 @@ def min_distance_sqr_pbc(cart_coords1, cart_coords2, lengths, angles,
         batch_size, -1, -1
     )
 
-    # lattice matrix
     lattice = lattice_params_to_matrix_torch(lengths, angles)
 
-    # Compute the x, y, z positional offsets for each cell in each image
     data_cell = torch.transpose(lattice, 1, 2)
     pbc_offsets = torch.bmm(data_cell, unit_cell_batch)
     pbc_offsets_per_atom = torch.repeat_interleave(
         pbc_offsets, num_atoms, dim=0
     )
 
-    # Expand the positions and indices for the 9 cells
     pos1 = pos1.view(-1, 3, 1).expand(-1, -1, num_cells)
     pos2 = pos2.view(-1, 3, 1).expand(-1, -1, num_cells)
-    # Add the PBC offsets for the second atom
     pos2 = pos2 + pbc_offsets_per_atom
 
-    # Compute the vector between atoms
     # shape (num_atom_squared_sum, 3, 27)
     atom_distance_vector = pos1 - pos2
     atom_distance_sqr = torch.sum(atom_distance_vector ** 2, dim=1)
@@ -1119,7 +1012,6 @@ class StandardScalerTorch(object):
     def fit(self, X):
         X = torch.tensor(X, dtype=torch.float)
         self.means = torch.mean(X, dim=0)
-        # https://github.com/pytorch/pytorch/issues/29372
         self.stds = torch.std(X, dim=0, unbiased=False) + EPSILON
 
     def transform(self, X):
@@ -1197,7 +1089,6 @@ def preprocess(input_file, num_workers, niggli, primitive, graph_method,
         [tol] * len(df),
         num_cpus=num_workers)
 
-
     mpid_to_results = {result['mp_id']: result for result in unordered_results if result is not None}
     ordered_results = [mpid_to_results[df.iloc[idx]['material_id']]
                        for idx in range(len(df)) if df.iloc[idx]['material_id'] in mpid_to_results]
@@ -1214,7 +1105,7 @@ def preprocess_tensors(crystal_array_list, niggli, primitive, graph_method):
             if len(atom_types) < 3:
                 print('this crystal contains less than 3 atoms.... ignore it')
                 return None
-            
+
             lengths = crystal_array['lengths']
             angles = crystal_array['angles']
             crystal = Structure(
@@ -1252,7 +1143,6 @@ def preprocess_tensors(crystal_array_list, niggli, primitive, graph_method):
 def add_scaled_lattice_prop(data_list, lattice_scale_method):
     for dict in data_list:
         graph_arrays = dict['graph_arrays']
-        # the indexes are brittle if more objects are returned
         lengths = graph_arrays[2]
         angles = graph_arrays[3]
         num_atoms = graph_arrays[-1]
