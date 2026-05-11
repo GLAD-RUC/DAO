@@ -134,34 +134,19 @@ def load_model(model_path, load_data=False, testing=True, from_scratch=False):
                     [int(ckpt.parts[-1].split('-')[0].split('=')[1]) for ckpt in ckpts if 'last' not in ckpt.parts[-1]])
                 ckpt = str(ckpts[ckpt_epochs.argsort()[-1]])
         
-        # ck = torch.load(ckpt)
-        # # print(ck)
-        # # del ck['hyper_parameters']['ckpt_path']
-        # ck['hyper_parameters']['ckpt_path'] = 'xxxx.ckpt'
-        # # print(ck['hyper_parameters']['ckpt_path'])
-        # torch.save(ck, ckpt)
-
-        if from_scratch:
-            model = CrystGenerativeScratchModel.load_from_checkpoint(ckpt)
-        else:
-            model: pl.LightningModule = hydra.utils.instantiate(
-                cfg.model,
-                optim=cfg.optim,
-                data=cfg.data,
-                logging=cfg.logging,
-                from_scratch=cfg.train.from_scratch,
-                pretrain_mode=cfg.train.pretrain_mode,
-                powerful_predictor=cfg.train.powerful_predictor,
-                terminate_on_nan=True,
-                _recursive_=False,
-            )
-            # print('init: ', model)
-            # model.load_state_dict(torch.load(ckpt), strict=False)
-            # print('after: ', model)
-            model = load_from_checkpoint_torch(ckpt, model, strict=True)
-            
-            # model = CrystGenerativeFinetuneModel.load_from_checkpoint(ck['state_dict'], map_location=torch.device('cpu'))
-            # model = CrystGenerativeFinetuneModel.load_from_checkpoint(ckpt)
+        cfg.model.pretrain_repr = None
+        model: pl.LightningModule = hydra.utils.instantiate(
+            cfg.model,
+            optim=cfg.optim,
+            data=cfg.data,
+            logging=cfg.logging,
+            from_scratch=cfg.train.from_scratch,
+            pretrain_mode=cfg.train.pretrain_mode,
+            powerful_predictor=cfg.train.powerful_predictor,
+            terminate_on_nan=True,
+            _recursive_=False,
+        )
+        model = load_from_checkpoint_torch(ckpt, model, strict=True)
         try:
             model.lattice_scaler = torch.load(model_path / 'lattice_scaler.pt')
             model.scaler = torch.load(model_path / 'prop_scaler.pt')

@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm
 from typing import Any, Dict, List, Optional
+import os
 
 from dao.common.data_utils import lattice_params_to_matrix_torch
 from dao.pl_modules.PTModels import BaseModule, CrystGenerativePretrainModel, SinusoidalTimeEmbeddings
@@ -26,15 +27,10 @@ class CrystFinetuneModel(BaseModule):
         self.decoder = hydra.utils.instantiate(self.hparams.decoder, latent_dim = latent_dim, diffuse=self.diffuse, \
                                             _recursive_=False, max_atoms=self.max_atoms)
 
-        if not getattr(self.hparams, "from_scratch", False):
-            try:
-                print('Loding GenerativePretrainModel.......')
-                pretrain_model = CrystGenerativePretrainModel.load_from_checkpoint(self.hparams.pretrain_repr)
-                self.decoder = deepcopy(pretrain_model.decoder)
-            except Exception as e:
-                print(e)
-                print('******** Load model error! ********')
-                pass
+        if not getattr(self.hparams, "from_scratch", False) and self.hparams.pretrain_repr:
+            print('Loading GenerativePretrainModel.......')
+            pretrain_model = CrystGenerativePretrainModel.load_from_checkpoint(self.hparams.pretrain_repr)
+            self.decoder = deepcopy(pretrain_model.decoder)
 
         self.time_embedding = SinusoidalTimeEmbeddings(self.hparams.time_dim)
 
