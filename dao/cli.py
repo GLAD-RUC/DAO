@@ -183,20 +183,8 @@ def cmd_csp_generate(args: argparse.Namespace) -> int:
     root = _repo_root()
     base_env = _default_env(root)
 
-    default_total_batches = {
-        "mp_20": 38,
-        "mpts_52": 405,
-    }
-    total_batches = args.total_batches
-    if total_batches is None:
-        if args.dataset not in default_total_batches:
-            raise SystemExit(
-                f"Unknown dataset={args.dataset}. Please provide --total-batches for multi-GPU sharding."
-            )
-        total_batches = default_total_batches[args.dataset]
-
     procs: List[subprocess.Popen] = []
-    for rank, start, end in _split_batches(total_batches, args.num_gpus):
+    for rank in range(args.num_gpus):
         gpu_id = args.base_gpu + rank
         label = f"{args.num_evals}_all" if args.num_gpus == 1 else f"{args.num_evals}_{rank}"
 
@@ -212,17 +200,18 @@ def cmd_csp_generate(args: argparse.Namespace) -> int:
             label,
             "--model_path",
             args.model_path,
-            "--start",
-            str(start),
-            "--end",
-            str(end),
+            "--rank",
+            str(rank),
+            "--world_size",
+            str(args.num_gpus),
+            "--batch_size",
+            str(args.batch_size),
         ]
         if args.energy_guidance:
             py_args.append("--energy_guidance")
         if args.energy_model_path:
             py_args += ["--energy_model_path", args.energy_model_path]
 
-        print(f"[rank={rank}] gpu={gpu_id} batches=[{start},{end}) label={label}")
         procs.append(_popen_python("scripts/run/generate.py", py_args, env=env, cwd=root))
 
     rc = 0
@@ -356,7 +345,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_gen.add_argument("--num-evals", type=int, default=1)
     p_gen.add_argument("--num-gpus", type=int, default=1)
     p_gen.add_argument("--base-gpu", type=int, default=0)
-    p_gen.add_argument("--total-batches", type=int, default=None, help="If omitted, uses built-in defaults for mp_20/mpts_52")
+    p_gen.add_argument("--batch-size", type=int, default=-1, help="Test batch size; -1 means use hparams default")
     p_gen.set_defaults(func=cmd_csp_generate)
 
     p_eval = csp_sub.add_parser("evaluate", help="Evaluate generated results (MR / RMSD)")

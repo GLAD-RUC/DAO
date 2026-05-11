@@ -119,7 +119,7 @@ def load_config(model_path):
     return cfg
 
 
-def load_model(model_path, load_data=False, testing=True, from_scratch=False):
+def load_model(model_path, load_data=False, testing=True, from_scratch=False, batch_size=-1):
     model_path = Path(model_path).expanduser().resolve()
     with initialize_config_dir(str(model_path)):
         cfg = compose(config_name='hparams')
@@ -154,6 +154,8 @@ def load_model(model_path, load_data=False, testing=True, from_scratch=False):
             pass
 
         if load_data:
+            if batch_size > 0:
+                cfg.data.datamodule.batch_size.test = batch_size
             datamodule = hydra.utils.instantiate(
                 cfg.data.datamodule, _recursive_=False, pretrain=False, scaler_path=model_path
             )

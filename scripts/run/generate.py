@@ -33,7 +33,7 @@ import copy
 import numpy as np
 
 
-def diffusion(loader, model, num_evals, energy_model=None, idx_pool=None, step_lr = 1e-5, energy_guidance=False, aug=1.):
+def diffusion(loader, model, num_evals, energy_model=None, rank=0, world_size=1, step_lr = 1e-5, energy_guidance=False, aug=1.):
 
     print('=' * 20)
     if energy_guidance:
@@ -42,18 +42,25 @@ def diffusion(loader, model, num_evals, energy_model=None, idx_pool=None, step_l
     else:
         print('Not using energy guidance.......')
     print('=' * 20)
-    
+
+    # Compute which batches this rank should handle (contiguous chunk)
+    total_batches = len(loader)
+    chunk_size = total_batches // world_size
+    remainder = total_batches % world_size
+    start = rank * chunk_size + min(rank, remainder)
+    end = start + chunk_size + (1 if rank < remainder else 0)
+    idx_pool = set(range(start, end))
+    print(f'[rank={rank}] gpu={os.environ.get("CUDA_VISIBLE_DEVICES", "?")} batches=[{start},{end})/{total_batches}')
+
     frac_coords = []
     num_atoms = []
     atom_types = []
     lattices = []
     input_data_list = []
-    # pred_energy_list = []
-    # target_energy_list = []
     trajs = []
-    
+
     for idx, batch in enumerate(loader):
-        if args.end != -1 and idx not in idx_pool:
+        if idx not in idx_pool:
             continue
         
         if torch.cuda.is_available():
@@ -167,7 +174,7 @@ def main(args):
 
     else:
          model, test_loader, cfg = load_model(
-            model_path, load_data=True, from_scratch=args.from_scratch)
+            model_path, load_data=True, from_scratch=args.from_scratch, batch_size=args.batch_size)
 
     
     if args.energy_model_path != '':
@@ -190,7 +197,7 @@ def main(args):
     start_time = time.time()
     (frac_coords, atom_types, lattices, lengths, angles, num_atoms, input_data_batch, pred_energy, trajs) = diffusion(
         test_loader, model, args.num_evals, \
-        idx_pool=range(args.start, args.end), \
+        rank=args.rank, world_size=args.world_size, \
         energy_model=energy_model,  step_lr=step_lr, energy_guidance=args.energy_guidance, aug=args.aug)
 
     if args.label == '':
@@ -223,8 +230,9 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', required=True)
     parser.add_argument('--step_lr', default=-1, type=float)
     parser.add_argument('--aug', default=20., type=float)
-    parser.add_argument('--start', default=-1, type=int)
-    parser.add_argument('--end', default=-1, type=int)
+    parser.add_argument('--rank', default=0, type=int, help='GPU rank for multi-GPU sharding')
+    parser.add_argument('--world_size', default=1, type=int, help='Total number of GPUs')
+    parser.add_argument('--batch_size', default=-1, type=int, help='Test batch size; -1 means use hparams default')
     parser.add_argument('--num_evals', default=1, type=int)
     parser.add_argument('--no_ft', action='store_true')
     parser.add_argument('--stable_only', action='store_true')
