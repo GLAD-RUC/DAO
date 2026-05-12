@@ -45,23 +45,29 @@ Both models are built upon **Crysformer**, an equivariant graph transformer, and
 
 ## Installation
 
-We recommend using **Conda** to manage the environment to ensure compatibility with the specific PyTorch and CUDA versions used in our experiments.
+We recommend using **Conda** to manage the environment to ensure compatibility with the specific PyTorch and CUDA versions used in our experiments. The repo ships a one-shot `setup.sh` that:
+
+- creates a conda env (default name: `dao`) with Python 3.8.18,
+- installs `pytorch==1.10.0` + `cudatoolkit=11.3` via conda,
+- installs the rest of the stack pinned in `pyproject.toml` via `pip install -e .`.
 
 ```bash
-# 1. Create a clean environment
-conda create -n dao python=3.8.18
+# 1. Run the setup script (creates conda env "dao")
+bash setup.sh
 conda activate dao
 
-# 2. Install dependencies
-# Note: pyproject.toml pins specific binary wheels for Linux x86_64 + CUDA 11.3
-python -m pip install -U pip
-python -m pip install -e .
-
-# 3. Verify installation
+# 2. Verify installation
 python -m dao doctor
 ```
 
-**Note**: If you are using a different OS or CUDA version, you may need to adjust the wheel URLs in `pyproject.toml` manually.
+To use a different env name (e.g., `my_dao`):
+
+```bash
+ENV_NAME=my_dao bash setup.sh
+conda activate my_dao
+```
+
+**Note**: `pyproject.toml` pins prebuilt PyG wheels (`torch-scatter`, `torch-sparse`, `torch-cluster`) for Linux x86_64 + Python 3.8 + CUDA 11.3. On other OS/CUDA combinations you will need to adjust those URLs manually.
 
 ### Environment variables (optional)
 

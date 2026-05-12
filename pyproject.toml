@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=68,<81", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,60 +7,65 @@ name = "dao"
 version = "0.1.0"
 description = "DAO: Siamese Foundation Models for Crystal Structure Prediction"
 readme = "README.md"
-requires-python = ">=3.8,<3.9"
 license = { file = "LICENSE" }
+requires-python = ">=3.8,<3.9"
 authors = [
-  { name = "DAO Authors" }
+  { name = "DAO Authors", email = "wlm155@126.com" },
+]
+urls.repository = "https://github.com/GLAD-RUC/DAO"
+urls.paper = "https://www.nature.com/articles/s41467-026-72362-3"
+classifiers = [
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Topic :: Scientific/Engineering :: Chemistry",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
+# PyTorch 1.10.0 + cudatoolkit 11.3 must be pre-installed via conda
+# (see setup.sh). This file pins all remaining Python dependencies.
 dependencies = [
-  # --- Runtime foundation (pinned to known-good combo) ---
-  # This project is tested against: Python 3.8.x + PyTorch 1.10.0 + CUDA 11.3 (cu113) + PyG 1.7.2.
-  # For Linux x86_64 + cp38, we use direct wheel URLs to avoid pip attempting source builds.
-
-  # PyTorch (CUDA 11.3 wheel, Linux x86_64, cp38)
-  # Intended usage: create a clean conda env with Python 3.8.18, then run `pip install -e .`.
-  # Avoid mixing conda-installed torch/PyG with these pinned pip wheels.
-  "torch @ https://download.pytorch.org/whl/cu113/torch-1.10.0%2Bcu113-cp38-cp38-linux_x86_64.whl ; python_version=='3.8' and platform_system=='Linux' and platform_machine=='x86_64'",
-
-  # PyTorch Geometric stack (matching torch-1.10.0+cu113)
+  # PyG extensions: cu113 wheels match conda's torch 1.10.0 (ABI compat).
   "torch-scatter @ https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_scatter-2.0.9-cp38-cp38-linux_x86_64.whl ; python_version=='3.8' and platform_system=='Linux' and platform_machine=='x86_64'",
-  "torch-sparse @ https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_sparse-0.6.13-cp38-cp38-linux_x86_64.whl ; python_version=='3.8' and platform_system=='Linux' and platform_machine=='x86_64'",
-  "torch-cluster @ https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_cluster-1.6.0-cp38-cp38-linux_x86_64.whl ; python_version=='3.8' and platform_system=='Linux' and platform_machine=='x86_64'",
-  "torch-spline-conv @ https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_spline_conv-1.2.1-cp38-cp38-linux_x86_64.whl ; python_version=='3.8' and platform_system=='Linux' and platform_machine=='x86_64'",
-  "torch-geometric==1.7.2 ; python_version=='3.8' and platform_system=='Linux' and platform_machine=='x86_64'",
+  "torch-sparse  @ https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_sparse-0.6.13-cp38-cp38-linux_x86_64.whl  ; python_version=='3.8' and platform_system=='Linux' and platform_machine=='x86_64'",
+  "torch-cluster @ https://data.pyg.org/whl/torch-1.10.0%2Bcu113/torch_cluster-1.6.0-cp38-cp38-linux_x86_64.whl  ; python_version=='3.8' and platform_system=='Linux' and platform_machine=='x86_64'",
+  "torch-geometric==1.7.2",
 
-  # Keep these pinned to match the known-good environment used by the authors.
-  # Rationale:
-  # - `pytorch-lightning==1.3.8` requires `torchmetrics==0.5.*`.
-  # - Hydra/OmegaConf major versions are sensitive to mismatches.
+  # Lightning stack (versions tightly coupled).
+  "pytorch-lightning==1.3.8",
+  "torchmetrics==0.5.0",
+
+  # Hydra / config.
   "hydra-core==1.3.2",
   "omegaconf==2.3.0",
   "python-dotenv==1.0.1",
 
+  # Scientific stack.
   "numpy==1.24.3",
   "scipy==1.10.1",
   "pandas==2.0.3",
   "tqdm==4.67.1",
   "p-tqdm==1.4.2",
+  "networkx",
+  "scikit-learn",
+  "pathos",
 
+  # Materials science.
   "pymatgen==2023.8.10",
   "smact==2.2.1",
   "einops==0.8.0",
 
+  # Logging.
   "wandb==0.13.5",
-  "pytorch-lightning==1.3.8",
-  "torchmetrics==0.5.0",
+
+  # pytorch-lightning 1.3.8 imports removed distutils symbols.
+  "setuptools==59.5.0",
 ]
 
 [project.optional-dependencies]
-dev = [
-  "ruff>=0.4",
-]
-
-# Note:
-# - The CUDA/PyG wheels above are specified only for Linux x86_64 + Python 3.8.
-# - If you need a different OS/Python/CUDA combination, you must adjust these URLs.
+dev = ["ruff>=0.4"]
 
 [project.scripts]
 dao = "dao.cli:main"
@@ -71,3 +76,10 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["dao*"]
+
+[tool.setuptools.package-data]
+"*" = ["**.yaml", "**.csv"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
