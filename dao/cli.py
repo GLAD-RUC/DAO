@@ -231,6 +231,45 @@ def cmd_csp_generate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_csp_generate_formula(args: argparse.Namespace) -> int:
+    root = _repo_root()
+    env = _default_env(root)
+    if args.gpu is not None:
+        env["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+
+    if not args.formula and not args.input_file:
+        raise SystemExit("Provide --formula and/or --input-file")
+
+    py_args = [
+        "--model_path",
+        args.model_path,
+        "--num_evals",
+        str(args.num_evals),
+        "--batch_size",
+        str(args.batch_size),
+        "--aug",
+        str(args.aug),
+    ]
+    if args.formula:
+        py_args += ["--formula", args.formula]
+    if args.num_atoms > 0:
+        py_args += ["--num_atoms", str(args.num_atoms)]
+    if args.input_file:
+        py_args += ["--input_file", args.input_file]
+    if args.energy_guidance:
+        py_args.append("--energy_guidance")
+    if args.energy_model_path:
+        py_args += ["--energy_model_path", args.energy_model_path]
+    if args.output_dir:
+        py_args += ["--output_dir", args.output_dir]
+    if args.label:
+        py_args += ["--label", args.label]
+    if args.write_cifs:
+        py_args.append("--write_cifs")
+
+    return _run_python("scripts/run/generate_from_formula.py", py_args, env=env, cwd=root)
+
+
 def cmd_csp_evaluate(args: argparse.Namespace) -> int:
     root = _repo_root()
     env = _default_env(root)
@@ -347,6 +386,34 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_gen.add_argument("--base-gpu", type=int, default=0)
     p_gen.add_argument("--batch-size", type=int, default=-1, help="Test batch size; -1 means use hparams default")
     p_gen.set_defaults(func=cmd_csp_generate)
+
+    p_genf = csp_sub.add_parser(
+        "generate-from-formula",
+        help="Generate structures from chemical formula(s) (single or batch)",
+    )
+    p_genf.add_argument("--model-path", required=True, help="DAO-G finetune output dir")
+    p_genf.add_argument("--energy-model-path", default="", help="DAO-P checkpoint path")
+    p_genf.add_argument("--energy-guidance", action="store_true")
+    p_genf.add_argument("--formula", default="", help="Single formula, e.g. 'Li2FeO4'")
+    p_genf.add_argument(
+        "--input-file",
+        default="",
+        help="Text file with one formula per line; optional second column sets num_atoms.",
+    )
+    p_genf.add_argument(
+        "--num-atoms",
+        type=int,
+        default=0,
+        help="Optional override for --formula: total atoms (multiple of reduced formula unit).",
+    )
+    p_genf.add_argument("--num-evals", type=int, default=1)
+    p_genf.add_argument("--batch-size", type=int, default=32)
+    p_genf.add_argument("--aug", type=float, default=1.0)
+    p_genf.add_argument("--output-dir", default="", help="Output dir (default: model-path)")
+    p_genf.add_argument("--label", default="", help="Suffix for eval_diff_<label>.pt")
+    p_genf.add_argument("--write-cifs", action="store_true", help="Also write per-sample CIF files")
+    p_genf.add_argument("--gpu", type=int, default=None)
+    p_genf.set_defaults(func=cmd_csp_generate_formula)
 
     p_eval = csp_sub.add_parser("evaluate", help="Evaluate generated results (MR / RMSD)")
     p_eval.add_argument("--dataset", required=True, help="e.g. mp_20 / mpts_52")

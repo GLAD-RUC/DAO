@@ -180,6 +180,42 @@ python -m dao csp generate \
   --num-gpus 1
 ```
 
+**Generate from chemical formula(s):**
+
+When you want to predict structures for arbitrary compositions (no benchmark dataset required), use `csp generate-from-formula`. The same code path handles both modes:
+
+```bash
+# (a) single formula
+python -m dao csp generate-from-formula \
+  --model-path ckpts/finetune_mp_20 \
+  --formula "Li2FeO4" \
+  --num-evals 1 \
+  --write-cifs \
+  --output-dir ./outputs
+
+# (b) batch input file (one formula per line; optional second column = num_atoms)
+python -m dao csp generate-from-formula \
+  --model-path ckpts/finetune_mp_20 \
+  --input-file my_formulas.txt \
+  --num-evals 1 \
+  --write-cifs
+```
+
+`my_formulas.txt` example:
+
+```text
+# formula              num_atoms (optional)
+Li2FeO4
+SrTiO3                 5
+NaCl                   8
+```
+
+Outputs:
+- `eval_diff_<label>.pt` (default label `formula_<num_evals>`) under `--output-dir` (if not specified, saved on `--model-path`),
+- one CIF per (formula, eval) pair under `<output_dir>/cifs/` when `--write-cifs` is set.
+
+Energy guidance (`--energy-guidance --energy-model-path ckpts/dao_p/last.ckpt`) is supported just like in dataset-based generation.
+
 ### 2. Structure Evaluation
 
 Evaluate the generated structures against the ground truth using Match Rate (MR) and RMSD metrics.
