@@ -102,17 +102,20 @@ The sampling/inference scripts expect the checkpoint *directory* to also contain
 ## Repository Structure
 
 *   `dao/`: Source code for models and CLI.
-    *   `pl_modules/`: PyTorch Lightning modules (Crysformer, Diffusion, etc.).
-    *   `pl_data/`: Data loading logic.
-*   `conf/`: Hydra configuration files.
-*   `scripts/`: Helper scripts used by the CLI.
-    *   `scripts/run/`: Generation/finetune launchers.
-    *   `scripts/eval/`: Evaluation utilities.
-    *   `scripts/infer/`: Property/energy inference utilities.
-*   `data/`: Datasets (CSV + cached `*_ori.pt`).
+    *   `cli.py`: CLI entrypoint (`python -m dao`).
+    *   `common/`: Shared utilities, constants, data processing.
+    *   `pl_modules/`: PyTorch Lightning modules (CrysFormer, CSPNet, Diffusion, etc.).
+    *   `pl_data/`: Dataset and datamodule classes.
+*   `conf/`: Hydra configuration files (data, model, optimizer, etc.).
+*   `scripts/`: Backend scripts invoked by the CLI.
+    *   `run/`: Generation, finetune, and conversion launchers.
+    *   `eval/`: Structure evaluation utilities.
+    *   `infer/`: Property/energy inference utilities.
+    *   `data/`: Dataset preparation (CIF/CSV to cached `.pt`).
+*   `data/`: Benchmark datasets (CSV + cached `*_ori.pt`).
 *   `ckpts/`: Pretrained/finetuned checkpoints (plus scalers).
-*   `outputs/`: Hydra/W&B run artifacts (created automatically).
-*   `assets/`: Figures and diagrams.
+*   `setup.sh`: One-shot conda environment setup.
+*   `pyproject.toml`: Package metadata and pinned dependencies.
 
 ## Usage
 
