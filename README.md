@@ -149,6 +149,7 @@ All interactions go through the `dao` CLI (`python -m dao`). Below is a summary 
 | `dao csp evaluate` | Evaluate generated structures (MR / RMSD) |
 | `dao csp finetune` | Finetune DAO-G on a downstream dataset |
 | `dao prop predict` | Predict properties with DAO-P |
+| `dao prop predict-from-cif` | Predict properties directly from CIF files |
 | `dao supercon generate` | Generate superconductor structures |
 | `dao doctor` | Check repo layout and environment |
 
@@ -294,6 +295,19 @@ python -m dao prop predict \
 This saves `pred_<prop>_of_<eval_file>.npy` next to `--eval-path`.
 
 >**Note:** To predict a property **other than energy**, specify the `--ori-path` argument with the path to the **finetuned** DAO-P model, provide the target property using `--prop`, and omit the `--pred-energy` flag. [Critical temperature prediction](#critical-temperature-tc-prediction) is an example.
+
+**Predict directly from CIF files:**
+
+If you have CIF files instead of cached `.pt` datasets, use `predict-from-cif`. It automatically converts CIFs to the required format and runs inference in one step:
+
+```bash
+python -m dao prop predict-from-cif \
+  --cif-dir my_cifs/ \
+  --model-path ckpts/dao_p/last.ckpt \
+  --pred-energy
+```
+
+This writes `pred_<prop>_of_custom.npy` inside `--cif-dir`. Intermediate files (CSV + `.pt` cache) are created in a temporary directory and cleaned up automatically; use `--keep-cache` to preserve them.
 
 ## Superconductors
 

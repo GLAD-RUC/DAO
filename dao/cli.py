@@ -358,6 +358,30 @@ def cmd_prop_predict(args: argparse.Namespace) -> int:
     return _run_python("scripts/infer/inference_prop.py", py_args, env=env, cwd=root)
 
 
+def cmd_prop_predict_from_cif(args: argparse.Namespace) -> int:
+    root = _repo_root()
+    env = _default_env(root)
+    py_args = [
+        "--cif-dir",
+        args.cif_dir,
+        "--model-path",
+        args.model_path,
+        "--prop",
+        args.prop,
+    ]
+    if args.pred_energy:
+        py_args.append("--pred-energy")
+    if args.batch_size != 100:
+        py_args += ["--batch-size", str(args.batch_size)]
+    if args.out_npy:
+        py_args += ["--out-npy", args.out_npy]
+    if args.num_workers != 30:
+        py_args += ["--num-workers", str(args.num_workers)]
+    if args.keep_cache:
+        py_args.append("--keep-cache")
+    return _run_python("scripts/infer/inference_prop_from_cif.py", py_args, env=env, cwd=root)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m dao",
@@ -479,6 +503,19 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_pp.add_argument("--pred-energy", action="store_true")
     p_pp.add_argument("--out-npy", default="", help="Optional output .npy path")
     p_pp.set_defaults(func=cmd_prop_predict)
+
+    p_pfc = prop_sub.add_parser(
+        "predict-from-cif", help="Predict properties directly from CIF files"
+    )
+    p_pfc.add_argument("--cif-dir", required=True, help="Directory containing CIF files")
+    p_pfc.add_argument("--model-path", required=True, help="DAO-P checkpoint file")
+    p_pfc.add_argument("--prop", default="ehull", help="Property name (default: ehull)")
+    p_pfc.add_argument("--pred-energy", action="store_true", help="Predict energy (DAO-P energy head)")
+    p_pfc.add_argument("--batch-size", type=int, default=100, help="Inference batch size")
+    p_pfc.add_argument("--out-npy", default="", help="Output .npy path")
+    p_pfc.add_argument("--num-workers", type=int, default=30, help="Preprocessing workers")
+    p_pfc.add_argument("--keep-cache", action="store_true", help="Keep intermediate CSV/.pt files")
+    p_pfc.set_defaults(func=cmd_prop_predict_from_cif)
 
     ns = parser.parse_args(argv)
     return int(ns.func(ns))
