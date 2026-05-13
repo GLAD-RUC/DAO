@@ -31,7 +31,8 @@ Both models are built upon **Crysformer**, an equivariant graph transformer, and
   - [Quick Start](#quick-start)
     - [1. Crystal Structure Prediction (DAO-G)](#1-crystal-structure-prediction-dao-g)
     - [2. Structure Evaluation](#2-structure-evaluation)
-    - [3. Property Prediction (DAO-P)](#3-property-prediction-dao-p)
+    - [3. Convert generation results to CIF / POSCAR](#3-convert-generation-results-to-cif--poscar)
+    - [4. Property Prediction (DAO-P)](#4-property-prediction-dao-p)
   - [Superconductors](#superconductors)
       - [**Generate Superconductor Structures:**](#generate-superconductor-structures)
       - [**Critical Temperature (Tc) Prediction:**](#critical-temperature-tc-prediction)
@@ -138,7 +139,18 @@ Notes:
 
 ## Quick Start
 
-We provide a CLI via `python -m dao` (and also an installed console script `dao`) for easy interaction with the models.
+All interactions go through the `dao` CLI (`python -m dao`). Below is a summary of available commands:
+
+| Command | Description |
+|---------|-------------|
+| `dao csp generate` | Generate structures from a benchmark dataset |
+| `dao csp generate-from-formula` | Generate structures from chemical formula(s) |
+| `dao csp convert` | Convert `eval_diff_*.pt` to CIF / POSCAR |
+| `dao csp evaluate` | Evaluate generated structures (MR / RMSD) |
+| `dao csp finetune` | Finetune DAO-G on a downstream dataset |
+| `dao prop predict` | Predict properties with DAO-P |
+| `dao supercon generate` | Generate superconductor structures |
+| `dao doctor` | Check repo layout and environment |
 
 ### 1. Crystal Structure Prediction (DAO-G)
 
@@ -230,7 +242,28 @@ python -m dao csp evaluate \
 *   `--root-path`: The directory where generation results (`eval_diff_*.pt`) are saved.
 *   `--label`: The suffix of the generated file (e.g., `1_all` for `eval_diff_1_all.pt`).
 
-### 3. Property Prediction (DAO-P)
+### 3. Convert generation results to CIF / POSCAR
+
+Both `csp generate` and `csp generate-from-formula` produce `eval_diff_*.pt` tensors. Use `csp convert` to extract human-readable structure files:
+
+```bash
+# Convert all evals to CIF (default)
+python -m dao csp convert ckpts/finetune_mp_20/eval_diff_1_all.pt
+
+# Convert only eval index 0, output as POSCAR (.vasp)
+python -m dao csp convert ckpts/finetune_mp_20/eval_diff_1_all.pt \
+  --format poscar --eval-idx 0
+
+# Custom output directory
+python -m dao csp convert ckpts/finetune_mp_20/eval_diff_1_all.pt \
+  --out-dir ./my_structures
+```
+
+By default, files are written to `<pt_file_dir>/<pt_stem>_structures/`. For `generate-from-formula` outputs, CIF filenames include the formula; for benchmark outputs, they use an index.
+
+**About `--eval-idx`:** When running generation with `--num-evals N > 1`, the model produces N candidate structures per input. All candidates are stored in a single `.pt` file (the first dimension of `frac_coords`, `lattices`, etc. is N). Use `--eval-idx` to select which candidate to convert (0-indexed). The default (`-1`) converts all candidates.
+
+### 4. Property Prediction (DAO-P)
 
 Use DAO-P to predict properties (e.g., energy above hull, band gap) for datasets or generated structures.
 The command prints MAE and also saves predicted properties to a `.npy` file for quick inspection.

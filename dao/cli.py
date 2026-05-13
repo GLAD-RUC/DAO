@@ -270,6 +270,17 @@ def cmd_csp_generate_formula(args: argparse.Namespace) -> int:
     return _run_python("scripts/run/generate_from_formula.py", py_args, env=env, cwd=root)
 
 
+def cmd_csp_convert(args: argparse.Namespace) -> int:
+    root = _repo_root()
+    env = _default_env(root)
+    py_args = [args.pt_file, "--format", args.format]
+    if args.out_dir:
+        py_args += ["--out-dir", args.out_dir]
+    if args.eval_idx >= 0:
+        py_args += ["--eval-idx", str(args.eval_idx)]
+    return _run_python("scripts/run/convert_pt.py", py_args, env=env, cwd=root)
+
+
 def cmd_csp_evaluate(args: argparse.Namespace) -> int:
     root = _repo_root()
     env = _default_env(root)
@@ -422,6 +433,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_eval.add_argument("--label", default="")
     p_eval.add_argument("--multi-eval", action="store_true")
     p_eval.set_defaults(func=cmd_csp_evaluate)
+
+    p_conv = csp_sub.add_parser("convert", help="Convert eval_diff_*.pt to CIF or POSCAR files")
+    p_conv.add_argument("pt_file", help="Path to eval_diff_*.pt file")
+    p_conv.add_argument(
+        "--format", choices=["cif", "poscar"], default="cif",
+        help="Output format (default: cif). POSCAR files use .vasp extension.",
+    )
+    p_conv.add_argument(
+        "--out-dir", default="",
+        help="Output directory (default: <pt_file_dir>/<pt_stem>_structures/)",
+    )
+    p_conv.add_argument(
+        "--eval-idx", type=int, default=-1,
+        help="Which eval index to convert (-1 = all, default: all)",
+    )
+    p_conv.set_defaults(func=cmd_csp_convert)
 
     # Supercon
     p_sc = sub.add_parser("supercon", help="Superconductivity-related commands")
