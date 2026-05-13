@@ -18,28 +18,22 @@
 
 Both models are built upon **Crysformer**, an equivariant graph transformer, and are pretrained on **CrysDB** (940K entries) via a novel two-stage pretraining strategy involving unstable structure relaxation.
 
-> 🌐 Website: https://glad-ruc.github.io/DAO/ 
+> Website: https://glad-ruc.github.io/DAO/
 
 ## Table of Contents
 - [DAO: Siamese Foundation Models for Crystal Structure Prediction](#dao-siamese-foundation-models-for-crystal-structure-prediction)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
-    - [Environment variables (optional)](#environment-variables-optional)
   - [Data and Checkpoints](#data-and-checkpoints)
-    - [1. Datasets](#1-datasets)
-    - [2. Checkpoints](#2-checkpoints)
-  - [Quick Start](#quick-start)
-    - [1. Crystal Structure Prediction (DAO-G)](#1-crystal-structure-prediction-dao-g)
-    - [2. Structure Evaluation](#2-structure-evaluation)
-    - [3. Convert generation results to CIF / POSCAR](#3-convert-generation-results-to-cif--poscar)
-    - [4. Property Prediction (DAO-P)](#4-property-prediction-dao-p)
-  - [Superconductors](#superconductors)
-      - [**Generate Superconductor Structures:**](#generate-superconductor-structures)
-      - [**Critical Temperature (Tc) Prediction:**](#critical-temperature-tc-prediction)
-  - [Training](#training)
-    - [Finetuning](#finetuning)
-    - [Pretraining](#pretraining)
   - [Repository Structure](#repository-structure)
+  - [Usage](#usage)
+    - [CLI Overview](#cli-overview)
+    - [Generate Structures](#generate-structures)
+    - [Convert to CIF / POSCAR](#convert-to-cif--poscar)
+    - [Predict Properties](#predict-properties)
+    - [Evaluate Structures](#evaluate-structures)
+  - [Superconductor Discovery](#superconductor-discovery)
+  - [Training](#training)
   - [Citation](#citation)
   - [Contact](#contact)
   - [License](#license)
@@ -53,12 +47,9 @@ We recommend using **Conda** to manage the environment to ensure compatibility w
 - installs the rest of the stack pinned in `pyproject.toml` via `pip install -e .`.
 
 ```bash
-# 1. Run the setup script (creates conda env "dao")
 bash setup.sh
 conda activate dao
-
-# 2. Verify installation
-python -m dao doctor
+python -m dao doctor   # verify installation
 ```
 
 To use a different env name (e.g., `my_dao`):
@@ -70,143 +61,97 @@ conda activate my_dao
 
 **Note**: `pyproject.toml` pins prebuilt PyG wheels (`torch-scatter`, `torch-sparse`, `torch-cluster`) for Linux x86_64 + Python 3.8 + CUDA 11.3. On other OS/CUDA combinations you will need to adjust those URLs manually.
 
-### Environment variables (optional)
+<details>
+<summary>Environment variables (optional)</summary>
 
 The scripts/CLI rely on a few environment variables to locate the repo and decide where to write outputs. You usually do not need to set these manually (the CLI sets reasonable defaults):
 
 - `PROJECT_ROOT`: repository root (used to find `conf/`).
 - `HYDRA_JOBS`: Hydra run directory root (default: `outputs/hydra`).
 - `WANDB_DIR`: W&B run directory root (default: `outputs/wandb`).
+</details>
 
 ## Data and Checkpoints
 
 To replicate our results or use the models, you need to download the datasets and pretrained checkpoints.
 
-### 1. Datasets
+### Datasets
+
 Download the datasets (MP-20, MPTS-52, SuperCon, etc.) and place them in the `data/` directory:
 - [Download Link (Google Drive)](https://drive.google.com/drive/folders/1SOOvLycBhsOKKp3qX_l6SkASjfwf7-7A?usp=drive_link)
 
 or use `gdown` to download directly:
 ```bash
 pip install gdown
-
 gdown https://drive.google.com/drive/folders/1SOOvLycBhsOKKp3qX_l6SkASjfwf7-7A?usp=drive_link --output ./data --folder
 ```
 
+### Checkpoints
 
-
-Expected structure (examples):
-```text
-DAO/
-  data/
-    mp_20/
-    mpts_52/
-    super_conductors/
-      supercon3d/
-      real_world/
-      supercon_rest/
-    ...
-```
-
-### 2. Checkpoints
 Download the pretrained and finetuned checkpoints and place them in the `ckpts/` directory:
 - [Download Link (Google Drive)](https://drive.google.com/drive/folders/1msp-D3uWD0fJrwE7qrbRXok1u-FoOAdc?usp=drive_link)
 
 or use `gdown` to download directly:
 ```bash
 pip install gdown
-
 gdown https://drive.google.com/drive/folders/1msp-D3uWD0fJrwE7qrbRXok1u-FoOAdc?usp=drive_link --output ./ckpts --folder
 ```
 
+The sampling/inference scripts expect the checkpoint *directory* to also contain the saved scalers (e.g. `prop_scaler.pt`).
 
+## Repository Structure
 
-Expected structure (examples):
-```text
-DAO/
-  ckpts/
-    dao_g/
-    dao_p/
-    finetune_mp_20/
-    finetune_mpts_52/
-    finetune_gen_supercon/
-    ...
-```
+*   `dao/`: Source code for models and CLI.
+    *   `pl_modules/`: PyTorch Lightning modules (Crysformer, Diffusion, etc.).
+    *   `pl_data/`: Data loading logic.
+*   `conf/`: Hydra configuration files.
+*   `scripts/`: Helper scripts used by the CLI.
+    *   `scripts/run/`: Generation/finetune launchers.
+    *   `scripts/eval/`: Evaluation utilities.
+    *   `scripts/infer/`: Property/energy inference utilities.
+*   `data/`: Datasets (CSV + cached `*_ori.pt`).
+*   `ckpts/`: Pretrained/finetuned checkpoints (plus scalers).
+*   `outputs/`: Hydra/W&B run artifacts (created automatically).
+*   `assets/`: Figures and diagrams.
 
-Notes:
-- The sampling/inference scripts expect the checkpoint *directory* to also contain the saved scalers (e.g. `prop_scaler.pt`).
-- If you finetune/train yourself, Hydra will write run artifacts under `outputs/hydra/` by default.
+## Usage
 
-## Quick Start
+All interactions go through the `dao` CLI (`python -m dao`).
 
-All interactions go through the `dao` CLI (`python -m dao`). Below is a summary of available commands:
+### CLI Overview
 
 | Command | Description |
 |---------|-------------|
-| `dao csp generate` | Generate structures from a benchmark dataset |
 | `dao csp generate-from-formula` | Generate structures from chemical formula(s) |
+| `dao csp generate` | Generate structures from a benchmark dataset |
 | `dao csp convert` | Convert `eval_diff_*.pt` to CIF / POSCAR |
 | `dao csp evaluate` | Evaluate generated structures (MR / RMSD) |
-| `dao csp finetune` | Finetune DAO-G on a downstream dataset |
-| `dao prop predict` | Predict properties with DAO-P |
 | `dao prop predict-from-cif` | Predict properties directly from CIF files |
+| `dao prop predict` | Predict properties from cached datasets |
 | `dao supercon generate` | Generate superconductor structures |
+| `dao csp finetune` | Finetune DAO-G on a downstream dataset |
 | `dao doctor` | Check repo layout and environment |
 
-### 1. Crystal Structure Prediction (DAO-G)
+### Generate Structures
 
-Generate candidate crystal structures using a finetuned DAO-G model. You can optionally enable **energy guidance** using DAO-P to improve stability.
+DAO-G generates crystal structures via a diffusion process. You can optionally enable **energy guidance** using DAO-P to steer generation towards lower-energy (more stable) structures.
 
-**Basic Generation (Single GPU):**
+#### From chemical formulas
+
+The most common use case: predict structures for arbitrary compositions without needing a benchmark dataset.
+
+**Single formula:**
 ```bash
-python -m dao csp generate \
-  --dataset mp_20 \
-  --model-path ckpts/finetune_mp_20 \
-  --num-evals 1 \
-  --num-gpus 1
-```
-
-**Multi-GPU Generation:**
-To speed up generation, you can shard the workload across multiple GPUs.
-```bash
-# Example: Running on 4 GPUs
-python -m dao csp generate \
-  --dataset mp_20 \
-  --model-path ckpts/finetune_mp_20 \
-  --num-evals 1 \
-  --num-gpus 4 \
-  --base-gpu 0
-```
-This will automatically split the test set batches among the available GPUs (range: `[base_gpu, base_gpu + num_gpus)`).
-
-
-**Energy-Guided Generation:**
-Using DAO-P (`--energy-model-path`) to guide the diffusion process towards lower-energy structures.
-
-```bash
-python -m dao csp generate \
-  --dataset mp_20 \
-  --model-path ckpts/finetune_mp_20 \
-  --energy-guidance \
-  --energy-model-path ckpts/dao_p/last.ckpt \
-  --num-evals 1 \
-  --num-gpus 1
-```
-
-**Generate from chemical formula(s):**
-
-When you want to predict structures for arbitrary compositions (no benchmark dataset required), use `csp generate-from-formula`. The same code path handles both modes:
-
-```bash
-# (a) single formula
 python -m dao csp generate-from-formula \
   --model-path ckpts/finetune_mp_20 \
   --formula "Li2FeO4" \
   --num-evals 1 \
   --write-cifs \
   --output-dir ./outputs
+```
 
-# (b) batch input file (one formula per line; optional second column = num_atoms)
+**Batch input file** (one formula per line; optional second column = num_atoms):
+```bash
 python -m dao csp generate-from-formula \
   --model-path ckpts/finetune_mp_20 \
   --input-file my_formulas.txt \
@@ -215,7 +160,6 @@ python -m dao csp generate-from-formula \
 ```
 
 `my_formulas.txt` example:
-
 ```text
 # formula              num_atoms (optional)
 Li2FeO4
@@ -224,26 +168,46 @@ NaCl                   8
 ```
 
 Outputs:
-- `eval_diff_<label>.pt` (default label `formula_<num_evals>`) under `--output-dir` (if not specified, saved on `--model-path`),
+- `eval_diff_<label>.pt` (default label `formula_<num_evals>`) under `--output-dir` (if not specified, saved in `--model-path`),
 - one CIF per (formula, eval) pair under `<output_dir>/cifs/` when `--write-cifs` is set.
 
-Energy guidance (`--energy-guidance --energy-model-path ckpts/dao_p/last.ckpt`) is supported just like in dataset-based generation.
+#### From benchmark datasets
 
-### 2. Structure Evaluation
+Reproduce paper results on MP-20, MPTS-52, etc.
 
-Evaluate the generated structures against the ground truth using Match Rate (MR) and RMSD metrics.
+**Single GPU:**
+```bash
+python -m dao csp generate \
+  --dataset mp_20 \
+  --model-path ckpts/finetune_mp_20 \
+  --num-evals 1 \
+  --num-gpus 1
+```
+
+**Multi-GPU** (shard workload across GPUs):
+```bash
+python -m dao csp generate \
+  --dataset mp_20 \
+  --model-path ckpts/finetune_mp_20 \
+  --num-evals 1 \
+  --num-gpus 4 \
+  --base-gpu 0
+```
+
+#### Energy-guided generation
+
+Both modes support energy guidance. Add `--energy-guidance --energy-model-path <dao-p-ckpt>` to steer the diffusion process towards lower-energy structures:
 
 ```bash
-python -m dao csp evaluate \
-  --dataset mp_20 \
-  --root-path ckpts/finetune_mp_20 \
-  --num-evals 1 \
-  --label 1_all
+python -m dao csp generate-from-formula \
+  --model-path ckpts/finetune_mp_20 \
+  --formula "Li2FeO4" \
+  --energy-guidance \
+  --energy-model-path ckpts/dao_p/last.ckpt \
+  --num-evals 1
 ```
-*   `--root-path`: The directory where generation results (`eval_diff_*.pt`) are saved.
-*   `--label`: The suffix of the generated file (e.g., `1_all` for `eval_diff_1_all.pt`).
 
-### 3. Convert generation results to CIF / POSCAR
+### Convert to CIF / POSCAR
 
 Both `csp generate` and `csp generate-from-formula` produce `eval_diff_*.pt` tensors. Use `csp convert` to extract human-readable structure files:
 
@@ -260,45 +224,17 @@ python -m dao csp convert ckpts/finetune_mp_20/eval_diff_1_all.pt \
   --out-dir ./my_structures
 ```
 
-By default, files are written to `<pt_file_dir>/<pt_stem>_structures/`. For `generate-from-formula` outputs, CIF filenames include the formula; for benchmark outputs, they use an index.
+By default, files are written to `<pt_file_dir>/<pt_stem>_structures/`. For `generate-from-formula` outputs, filenames include the formula; for benchmark outputs, they use an index.
 
 **About `--eval-idx`:** When running generation with `--num-evals N > 1`, the model produces N candidate structures per input. All candidates are stored in a single `.pt` file (the first dimension of `frac_coords`, `lattices`, etc. is N). Use `--eval-idx` to select which candidate to convert (0-indexed). The default (`-1`) converts all candidates.
 
-### 4. Property Prediction (DAO-P)
+### Predict Properties
 
-Use DAO-P to predict properties (e.g., energy above hull, band gap) for datasets or generated structures.
-The command prints MAE and also saves predicted properties to a `.npy` file for quick inspection.
+DAO-P predicts properties (e.g., energy above hull, band gap) for crystal structures. The command prints MAE and saves predicted properties to a `.npy` file.
 
-**Predict on a Dataset:**
-```bash
-python -m dao prop predict \
-  --mode dataset \
-  --ori-path data/mp_20/test_ori.pt \
-  --model-path ckpts/dao_p_dedup/last.ckpt \
-  --pred-energy
-```
-This saves `pred_<prop>_of_<ori_file>.npy` next to `--ori-path`.
+#### From CIF files
 
-**Predict on Generated Structures:**
-
-Additionally provide the `eval-path` argument to predict on generated structures, turn the `mode` to "generated" and provide the `sample-size` argument to control the number of samples per structure.
-
-```bash
-python -m dao prop predict \
-  --mode generated \
-  --ori-path data/mp_20/test_ori.pt \
-  --eval-path ckpts/finetune_mp_20/eval_diff_1_all.pt \
-  --model-path ckpts/dao_p_dedup/last.ckpt \
-  --pred-energy \
-  --sample-size 1
-```
-This saves `pred_<prop>_of_<eval_file>.npy` next to `--eval-path`.
-
->**Note:** To predict a property **other than energy**, specify the `--ori-path` argument with the path to the **finetuned** DAO-P model, provide the target property using `--prop`, and omit the `--pred-energy` flag. [Critical temperature prediction](#critical-temperature-tc-prediction) is an example.
-
-**Predict directly from CIF files:**
-
-If you have CIF files instead of cached `.pt` datasets, use `predict-from-cif`. It automatically converts CIFs to the required format and runs inference in one step:
+The easiest way: point to a directory of CIF files.
 
 ```bash
 python -m dao prop predict-from-cif \
@@ -309,11 +245,52 @@ python -m dao prop predict-from-cif \
 
 This writes `pred_<prop>_of_custom.npy` inside `--cif-dir`. Intermediate files (CSV + `.pt` cache) are created in a temporary directory and cleaned up automatically; use `--keep-cache` to preserve them.
 
-## Superconductors
+#### From cached datasets
+
+```bash
+python -m dao prop predict \
+  --mode dataset \
+  --ori-path data/mp_20/test_ori.pt \
+  --model-path ckpts/dao_p_dedup/last.ckpt \
+  --pred-energy
+```
+
+This saves `pred_<prop>_of_<ori_file>.npy` next to `--ori-path`.
+
+#### From generated structures
+
+```bash
+python -m dao prop predict \
+  --mode generated \
+  --ori-path data/mp_20/test_ori.pt \
+  --eval-path ckpts/finetune_mp_20/eval_diff_1_all.pt \
+  --model-path ckpts/dao_p_dedup/last.ckpt \
+  --pred-energy \
+  --sample-size 1
+```
+
+>**Note:** To predict a property **other than energy (Ehull)**, specify the `--ori-path` argument with the path to the **finetuned** DAO-P model, provide the target property using `--prop`, and omit the `--pred-energy` flag. [Critical temperature prediction](#critical-temperature-tc-prediction) is an example.
+
+### Evaluate Structures
+
+Evaluate generated structures against ground truth using Match Rate (MR) and RMSD metrics.
+
+```bash
+python -m dao csp evaluate \
+  --dataset mp_20 \
+  --root-path ckpts/finetune_mp_20 \
+  --num-evals 1 \
+  --label 1_all
+```
+
+- `--root-path`: Directory containing generation results (`eval_diff_*.pt`).
+- `--label`: Suffix of the generated file (e.g., `1_all` for `eval_diff_1_all.pt`).
+
+## Superconductor Discovery
 
 DAO demonstrates significant potential in discovering superconductors.
 
-#### **Generate Superconductor Structures:**  
+### Generate superconductor structures
 
 For ordered superconductors without experimentally resolved structures in SuperCon dataset (`supercon_rest`, 748 entries):
 
@@ -327,22 +304,21 @@ python -m dao supercon generate \
   --gpu 0
 ```
 
-For three real-world superconductors, just replace "supercon_rest" with "supercon_realworld" and set `--num-evals 20` in the command above.
+For three real-world superconductors, just replace `supercon_rest` with `supercon_realworld` and set `--num-evals 20`.
 
-
-#### **Critical Temperature (Tc) Prediction:**
+### Critical Temperature (Tc) Prediction
 
 For three real-world superconductors not in SuperCon3D dataset (`supercon_real`, 3 entries):
 
 ```bash
-  for fold in {0..4};do
-    model_path="ckpts/finetuned_tc_model_fold_${fold}/last.ckpt"
-    python -m dao prop predict \
-      --mode dataset \
-      --ori-path data/super_conductors/real_world/output_ori.pt \
-      --model-path $model_path \
-      --prop logtc
-  done
+for fold in {0..4}; do
+  model_path="ckpts/finetuned_tc_model_fold_${fold}/last.ckpt"
+  python -m dao prop predict \
+    --mode dataset \
+    --ori-path data/super_conductors/real_world/output_ori.pt \
+    --model-path $model_path \
+    --prop logtc
+done
 ```
 
 Then average the results of the five folds to get the final predictions.
@@ -370,24 +346,8 @@ The finetune outputs are written by Hydra to `outputs/hydra/singlerun/<date>/fin
 To reproduce the pretraining of DAO-G (Stage I & II) and DAO-P, please refer to the scripts in `scripts/run/`:
 
 ```bash
-# Example: Run pretraining
 bash scripts/run/run_pretrain.sh
 ```
-
-## Repository Structure
-
-*   `dao/`: Source code for models and CLI.
-    *   `pl_modules/`: PyTorch Lightning modules (Crysformer, Diffusion, etc.).
-    *   `pl_data/`: Data loading logic.
-*   `conf/`: Hydra configuration files.
-*   `scripts/`: Helper scripts used by the CLI.
-    *   `scripts/run/`: Generation/finetune launchers.
-    *   `scripts/eval/`: Evaluation utilities.
-    *   `scripts/infer/`: Property/energy inference utilities.
-*   `data/`: Datasets (CSV + cached `*_ori.pt`).
-*   `ckpts/`: Pretrained/finetuned checkpoints (plus scalers).
-*   `outputs/`: Hydra/W&B run artifacts (created automatically).
-*   `assets/`: Figures and diagrams.
 
 ## Citation
 
@@ -404,13 +364,10 @@ If you find this repository useful, please cite our paper:
 }
 ```
 
-
 ## Contact
 
-If you have any questions, feedback, or collaboration ideas, feel free to reach out: 📧 wlm155@126.com
+If you have any questions, feedback, or collaboration ideas, feel free to reach out: wlm155@126.com
 
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
-
